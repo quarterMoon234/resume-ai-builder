@@ -1,14 +1,18 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import connectDB from './config/db.js';
 
-// 라우트 가져오기 (나중에 구현 예정)
+// 라우트 가져오기
 import profileRoutes from './routes/profile.js';
 import generateRoutes from './routes/generate.js';
 import companyRoutes from './routes/company.js';
 
 // 환경 변수 로드
 dotenv.config();
+
+// MongoDB 연결
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

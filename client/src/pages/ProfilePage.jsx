@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 
 function ProfilePage() {
   // 전체 프로필 상태 관리
@@ -35,6 +36,7 @@ function ProfilePage() {
   });
 
   const [showPreview, setShowPreview] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // 기본 정보 업데이트
   const updateBasicInfo = (field, value) => {
@@ -275,6 +277,44 @@ function ProfilePage() {
       ...prev,
       summary: { ...prev.summary, [field]: value }
     }));
+  };
+
+  // 프로필 저장
+  const handleSave = async () => {
+    // 간단한 필수 필드 체크
+    if (!profile.basicInfo.name || !profile.basicInfo.email) {
+      alert('이름과 이메일은 필수 입력 항목입니다.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // axios를 사용한 POST 요청
+      const response = await axios.post('/api/profile', profile);
+
+      // 성공 시
+      alert('프로필이 성공적으로 저장되었습니다!');
+      console.log('저장된 프로필 ID:', response.data.profileId);
+      console.log('전체 응답:', response.data);
+
+    } catch (error) {
+      console.error('저장 오류:', error);
+
+      // 에러 메시지 처리
+      if (error.response) {
+        // 서버가 응답을 보냈지만 에러 상태 코드
+        alert(`저장 실패: ${error.response.data.message || '서버 오류'}`);
+      } else if (error.request) {
+        // 요청은 보냈지만 응답을 받지 못함
+        alert('서버와 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+      } else {
+        // 요청 설정 중 오류 발생
+        alert('요청 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // 폼 제출 (미리보기)
@@ -859,12 +899,26 @@ function ProfilePage() {
         </div>
 
         {/* 제출 버튼 */}
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-4">
           <button
             type="submit"
             className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             프로필 미리보기
+          </button>
+
+          {/* 저장 버튼 */}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className={`px-8 py-3 font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
+              isSaving
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                : 'bg-green-600 text-white hover:bg-green-700'
+            }`}
+          >
+            {isSaving ? '저장 중...' : '프로필 저장하기'}
           </button>
         </div>
       </form>
