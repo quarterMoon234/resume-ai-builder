@@ -37,6 +37,9 @@ function ProfilePage() {
 
   const [showPreview, setShowPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedProfileId, setSavedProfileId] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedResume, setGeneratedResume] = useState(null);
 
   // 기본 정보 업데이트
   const updateBasicInfo = (field, value) => {
@@ -293,7 +296,8 @@ function ProfilePage() {
       // axios를 사용한 POST 요청
       const response = await axios.post('/api/profile', profile);
 
-      // 성공 시
+      // 성공 시 profileId 저장
+      setSavedProfileId(response.data.profileId);
       alert('프로필이 성공적으로 저장되었습니다!');
       console.log('저장된 프로필 ID:', response.data.profileId);
       console.log('전체 응답:', response.data);
@@ -314,6 +318,38 @@ function ProfilePage() {
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // 이력서 생성
+  const handleGenerateResume = async () => {
+    if (!savedProfileId) {
+      alert('먼저 프로필을 저장해주세요!');
+      return;
+    }
+
+    setIsGenerating(true);
+    setGeneratedResume(null);
+
+    try {
+      const response = await axios.post('/api/generate/basic', {
+        profileId: savedProfileId
+      });
+
+      setGeneratedResume(response.data.resume);
+      alert('이력서가 성공적으로 생성되었습니다!');
+    } catch (error) {
+      console.error('이력서 생성 오류:', error);
+
+      if (error.response) {
+        alert(`이력서 생성 실패: ${error.response.data.message || '서버 오류'}`);
+      } else if (error.request) {
+        alert('서버와 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+      } else {
+        alert('요청 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -920,6 +956,20 @@ function ProfilePage() {
           >
             {isSaving ? '저장 중...' : '프로필 저장하기'}
           </button>
+
+          {/* 이력서 생성 버튼 */}
+          <button
+            type="button"
+            onClick={handleGenerateResume}
+            disabled={!savedProfileId || isGenerating}
+            className={`px-8 py-3 font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+              !savedProfileId || isGenerating
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                : 'bg-purple-600 text-white hover:bg-purple-700'
+            }`}
+          >
+            {isGenerating ? '이력서 생성 중...' : 'AI 이력서 생성'}
+          </button>
         </div>
       </form>
 
@@ -933,6 +983,26 @@ function ProfilePage() {
           <pre className="bg-white p-4 rounded border border-gray-300 overflow-x-auto text-xs">
             {JSON.stringify(profile, null, 2)}
           </pre>
+        </div>
+      )}
+
+      {/* 생성된 이력서 표시 영역 */}
+      {generatedResume && (
+        <div className="mt-8 bg-white rounded-lg shadow-lg p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-800">생성된 이력서</h3>
+            <button
+              onClick={() => setGeneratedResume(null)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕ 닫기
+            </button>
+          </div>
+          <div className="prose max-w-none">
+            <pre className="whitespace-pre-wrap font-sans text-gray-700 leading-relaxed">
+              {generatedResume}
+            </pre>
+          </div>
         </div>
       )}
     </div>
