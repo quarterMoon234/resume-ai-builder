@@ -1,0 +1,33 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+// 라우트 가져오기 (나중에 구현 예정)
+import profileRoutes from './routes/profile.js';
+import generateRoutes from './routes/generate.js';
+import companyRoutes from './routes/company.js';
+
+// 환경 변수 로드
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// 미들웨어
+app.use(cors());
+app.use(express.json());
+
+// Health check 엔드포인트
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' });
+});
+
+// 라우트 연결 (나중에 구현 예정)
+app.use('/api/profile', profileRoutes);
+app.use('/api/generate', generateRoutes);
+app.use('/api/company', companyRoutes);
+
+// 서버 시작
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
