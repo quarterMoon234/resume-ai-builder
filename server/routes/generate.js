@@ -185,9 +185,98 @@ function formatProfileForPrompt(profile) {
   return text;
 }
 
-// POST /api/generate/custom - 기업 맞춤형 이력서 생성 (미구현)
-router.post('/custom', (req, res) => {
-  res.json({ message: 'Custom resume generation - to be implemented' });
+// POST /api/generate/custom - 기업 맞춤형 이력서 생성
+router.post('/custom', async (req, res) => {
+  try {
+    const { profileId, companyAnalysis, companyName } = req.body;
+
+    if (!profileId) {
+      return res.status(400).json({
+        success: false,
+        message: '프로필 ID가 필요합니다.'
+      });
+    }
+
+    if (!companyAnalysis) {
+      return res.status(400).json({
+        success: false,
+        message: '기업 분석 정보가 필요합니다.'
+      });
+    }
+
+    // 프로필 조회
+    const profile = await Profile.findById(profileId);
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: '프로필을 찾을 수 없습니다.'
+      });
+    }
+
+    // 프로필 데이터를 텍스트로 변환
+    const profileText = formatProfileForPrompt(profile);
+
+    // OpenAI GPT를 사용하여 맞춤형 이력서 생성
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `당신은 전문 이력서 작성 전문가입니다. 주어진 프로필 정보와 타겟 기업 분석 정보를 바탕으로 해당 기업에 최적화된 한국어 이력서를 작성해주세요.
+
+**중요 규칙:**
+- 제공된 프로필 정보만 사용하세요. 없는 정보를 임의로 추가하거나 만들어내지 마세요.
+- 기업 분석에서 도출된 요구 역량과 강조 포인트를 이력서에 자연스럽게 반영하세요.
+- 프로필의 경험과 기술 중 기업이 원하는 부분을 강조하세요.
+- 정보가 없는 섹션은 생략하거나 간단히 언급만 하세요.
+- 제공된 정보를 기반으로 전문적으로 재구성하되, 사실을 왜곡하지 마세요.
+
+**이력서 작성 방향:**
+1. 기업이 요구하는 핵심 역량에 맞춰 경력 요약 작성
+2. 관련 프로젝트와 경험을 우선적으로 배치
+3. 기업이 중요시하는 기술 스택과 도구를 강조
+4. 기업 문화와 가치에 부합하는 표현 사용
+
+이력서는 다음 형식을 따라야 합니다:
+1. 개인 정보 (이름, 연락처, 이메일)
+2. 경력 요약 (타겟 기업에 맞춤화된 한 문단)
+3. 핵심 역량 및 기술 (기업 요구사항 우선)
+4. 주요 프로젝트 및 경험 (관련성 높은 순서로)
+5. 학력
+6. 자격증 및 수상 경력 (제공된 경우만)
+
+각 섹션은 명확하게 구분하고, 전문적이면서도 읽기 쉬운 형식으로 작성해주세요.`
+        },
+        {
+          role: "user",
+          content: `# 타겟 기업 정보 및 분석\n기업명: ${companyName || '미지정'}\n\n${companyAnalysis}\n\n---\n\n# 지원자 프로필\n${profileText}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2500
+    });
+
+    const generatedResume = completion.choices[0].message.content;
+
+    // 성공 응답
+    res.json({
+      success: true,
+      message: '맞춤형 이력서가 성공적으로 생성되었습니다.',
+      resume: generatedResume,
+      profile: profile,
+      companyName: companyName
+    });
+
+  } catch (error) {
+    console.error('맞춤형 이력서 생성 오류:', error);
+
+    res.status(500).json({
+      success: false,
+      message: '맞춤형 이력서 생성 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
 });
 
 export default router;
