@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function ProfilePage() {
@@ -40,6 +40,64 @@ function ProfilePage() {
   const [savedProfileId, setSavedProfileId] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedResume, setGeneratedResume] = useState(null);
+  const [profiles, setProfiles] = useState([]);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  const [showLoadSection, setShowLoadSection] = useState(false);
+
+  // 프로필 목록 불러오기
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        const response = await axios.get('/api/profile');
+        setProfiles(response.data.profiles);
+      } catch (error) {
+        console.error('프로필 목록 조회 오류:', error);
+      }
+    };
+
+    fetchProfiles();
+  }, [savedProfileId]); // savedProfileId가 변경되면 목록 새로고침
+
+  // 프로필 불러오기
+  const handleLoadProfile = async (profileId) => {
+    setIsLoadingProfiles(true);
+    try {
+      const response = await axios.get(`/api/profile/${profileId}`);
+      setProfile(response.data.profile);
+      setSavedProfileId(profileId);
+      setShowLoadSection(false);
+      alert('프로필을 불러왔습니다!');
+    } catch (error) {
+      console.error('프로필 불러오기 오류:', error);
+      alert('프로필을 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoadingProfiles(false);
+    }
+  };
+
+  // 프로필 삭제
+  const handleDeleteProfile = async (profileId, profileName) => {
+    const confirmed = window.confirm(`"${profileName}" 프로필을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`);
+
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`/api/profile/${profileId}`);
+      alert('프로필이 삭제되었습니다.');
+
+      // 삭제된 프로필이 현재 불러온 프로필이면 초기화
+      if (savedProfileId === profileId) {
+        setSavedProfileId(null);
+      }
+
+      // 프로필 목록 새로고침
+      const response = await axios.get('/api/profile');
+      setProfiles(response.data.profiles);
+    } catch (error) {
+      console.error('프로필 삭제 오류:', error);
+      alert('프로필 삭제에 실패했습니다.');
+    }
+  };
 
   // 기본 정보 업데이트
   const updateBasicInfo = (field, value) => {
@@ -375,6 +433,62 @@ function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold mb-6">프로필 입력</h2>
+
+      {/* 저장된 프로필 불러오기 섹션 */}
+      <div className="bg-blue-50 rounded-lg shadow-sm p-6 mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-blue-900">저장된 프로필 불러오기</h3>
+          <button
+            type="button"
+            onClick={() => setShowLoadSection(!showLoadSection)}
+            className="text-blue-600 hover:text-blue-800 font-semibold"
+          >
+            {showLoadSection ? '닫기 ▲' : '열기 ▼'}
+          </button>
+        </div>
+
+        {showLoadSection && (
+          <div>
+            {profiles.length === 0 ? (
+              <p className="text-gray-600">저장된 프로필이 없습니다.</p>
+            ) : (
+              <div className="space-y-3">
+                {profiles.map((p) => (
+                  <div
+                    key={p._id}
+                    className="flex justify-between items-center bg-white p-4 rounded-lg border border-blue-200 hover:border-blue-400 transition"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-800">{p.basicInfo.name}</p>
+                      <p className="text-sm text-gray-600">{p.basicInfo.email}</p>
+                      <p className="text-xs text-gray-500">
+                        저장일: {new Date(p.createdAt).toLocaleDateString('ko-KR')}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleLoadProfile(p._id)}
+                        disabled={isLoadingProfiles}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+                      >
+                        {isLoadingProfiles ? '불러오는 중...' : '불러오기'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteProfile(p._id, p.basicInfo.name)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
 

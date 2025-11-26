@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function CompanyTargetPage() {
@@ -13,6 +13,24 @@ function CompanyTargetPage() {
   const [savedProfileId, setSavedProfileId] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [customResume, setCustomResume] = useState(null);
+  const [profiles, setProfiles] = useState([]);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
+
+  // 프로필 목록 불러오기
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        const response = await axios.get('/api/profile');
+        setProfiles(response.data.profiles);
+      } catch (error) {
+        console.error('프로필 목록 조회 오류:', error);
+      } finally {
+        setIsLoadingProfiles(false);
+      }
+    };
+
+    fetchProfiles();
+  }, []);
 
   // 기업 정보 업데이트
   const handleInputChange = (e) => {
@@ -195,20 +213,35 @@ function CompanyTargetPage() {
           <h2 className="text-2xl font-bold text-gray-800 mb-6">2. 맞춤형 이력서 생성</h2>
 
           <div className="space-y-6">
-            {/* 프로필 ID 입력 */}
+            {/* 프로필 선택 */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                프로필 ID <span className="text-red-500">*</span>
+                프로필 선택 <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={savedProfileId}
-                onChange={(e) => setSavedProfileId(e.target.value)}
-                placeholder="프로필 페이지에서 저장한 프로필 ID를 입력하세요"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
+              {isLoadingProfiles ? (
+                <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                  프로필 목록 불러오는 중...
+                </div>
+              ) : profiles.length === 0 ? (
+                <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-yellow-50 text-yellow-700">
+                  저장된 프로필이 없습니다. 먼저 프로필 페이지에서 프로필을 저장해주세요.
+                </div>
+              ) : (
+                <select
+                  value={savedProfileId}
+                  onChange={(e) => setSavedProfileId(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">-- 프로필을 선택하세요 --</option>
+                  {profiles.map((profile) => (
+                    <option key={profile._id} value={profile._id}>
+                      {profile.basicInfo.name} ({profile.basicInfo.email})
+                    </option>
+                  ))}
+                </select>
+              )}
               <p className="text-sm text-gray-500 mt-2">
-                프로필 페이지에서 저장하면 받을 수 있는 ID입니다.
+                프로필 페이지에서 저장한 프로필 중 하나를 선택하세요.
               </p>
             </div>
 
