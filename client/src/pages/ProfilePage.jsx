@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function ProfilePage() {
+  const navigate = useNavigate();
+
   // 전체 프로필 상태 관리
   const [profile, setProfile] = useState({
     basicInfo: {
@@ -394,9 +397,22 @@ function ProfilePage() {
         profileId: savedProfileId
       });
 
-      setGeneratedResume(response.data.resume);
-      alert('이력서가 성공적으로 생성되었습니다!');
+      console.log('=== 이력서 생성 응답 ===', response.data);
+
+      // 결과 페이지로 이동 (URL 파라미터로 resumeId 전달)
+      const resumeId = response.data.resumeId;
+      console.log('resumeId:', resumeId);
+
+      if (!resumeId) {
+        setIsGenerating(false);
+        alert('이력서 ID를 받지 못했습니다. 서버 응답을 확인하세요.');
+        return;
+      }
+
+      setIsGenerating(false);
+      navigate(`/result/${resumeId}`);
     } catch (error) {
+      setIsGenerating(false);
       console.error('이력서 생성 오류:', error);
 
       if (error.response) {
@@ -406,8 +422,6 @@ function ProfilePage() {
       } else {
         alert('요청 중 오류가 발생했습니다.');
       }
-    } finally {
-      setIsGenerating(false);
     }
   };
 

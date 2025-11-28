@@ -11,11 +11,8 @@ function Layout({ children }) {
             <Link to="/" className="text-blue-600 hover:underline">
               프로필 입력
             </Link>
-            <Link to="/company" className="text-blue-600 hover:underline">
-              타겟 기업 선택
-            </Link>
-            <Link to="/result" className="text-blue-600 hover:underline">
-              이력서 결과
+            <Link to="/history" className="text-blue-600 hover:underline">
+              이력서 히스토리
             </Link>
           </div>
         </div>

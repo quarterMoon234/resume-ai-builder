@@ -14,7 +14,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// POST /api/generate/basic - 기본 이력서 생성
+// POST /api/generate/basic - 기본 이력서 컨설팅 리포트 생성
 router.post('/basic', async (req, res) => {
   try {
     const { profileId } = req.body;
@@ -36,98 +36,46 @@ router.post('/basic', async (req, res) => {
       });
     }
 
-    // 프로필 데이터를 텍스트로 변환
+    // 프로필 데이터를 프롬프트용 텍스트로 변환
     const profileText = formatProfileForPrompt(profile);
 
-    // OpenAI GPT를 사용하여 이력서 생성
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `당신은 10년 경력의 전문 이력서 컨설턴트입니다. 주어진 프로필 정보를 바탕으로 **채용 담당자가 눈여겨볼 만한** 전문적이고 매력적인 한국어 이력서를 작성해주세요.
-
-**절대 규칙 (반드시 준수):**
-1. 제공된 정보만 사용하세요. 프로필에 없는 정보는 절대 추가하거나 만들어내지 마세요.
-2. 프로필에 경력, 프로젝트, 기술 스택이 없으면 그 섹션을 생략하세요.
-3. 추측이나 가정으로 정보를 채우지 마세요.
-
-**작성 원칙:**
-1. **성과 중심 작성**: 단순 업무 나열이 아닌, 성과와 결과를 강조하세요.
-   - 나쁜 예: "콘텐츠 운영 담당"
-   - 좋은 예: "콘텐츠 운영 전략 수립 및 실행을 통해 사용자 참여도 향상"
-
-2. **구체적 표현**: 제공된 정보를 구체적이고 전문적으로 표현하세요.
-   - 나쁜 예: "데이터 분석 기초"
-   - 좋은 예: "데이터 기반 의사결정을 위한 분석 역량 보유"
-
-3. **액션 동사 사용**: 주도적이고 능동적인 표현을 사용하세요.
-   - "수행했습니다", "기여했습니다", "달성했습니다", "개선했습니다", "기획하고 실행했습니다"
-
-4. **전문성 강조**: 경력, 프로젝트, 역량을 전문적으로 포장하세요.
-   - 도구/기술은 "활용 가능" 수준이 아닌 "실무 활용 경험" 으로 표현
-   - 역할은 "담당"이 아닌 "주도", "리드", "기획 및 실행"으로 표현
-
-5. **간결하고 임팩트 있게**: 불필요한 수식어는 제거하고, 핵심 성과를 명확히 전달하세요.
-
-**이력서 구조:**
-1. **개인 정보**: 이름, 연락처, 이메일 (깔끔하게)
-2. **전문 요약** (한 줄 소개가 있는 경우): 핵심 역량과 지향점을 2-3줄로 임팩트 있게
-3. **핵심 역량**: 키워드를 전문적으로 재구성 (있는 경우만)
-4. **경력 사항** (있는 경우):
-   - 회사명, 직위, 기간
-   - 주요 업무를 성과 중심으로 3-5개 bullet points
-   - 구체적 수치나 결과가 있다면 강조
-5. **프로젝트 경험** (있는 경우):
-   - 프로젝트명, 기간, 역할
-   - 주요 성과와 기여도를 명확히
-6. **학력**: 학교명, 전공, 학위, 기간 (있는 경우 활동 사항도 포함)
-7. **기술 스택 및 도구**: 카테고리별로 정리 (있는 경우만)
-8. **자격증 및 수상**: 명확하게 나열 (있는 경우만)
-
-**예시 변환:**
-- 입력: "콘텐츠 운영 매니저, 재직 중"
-- 출력: "콘텐츠 운영 전략 수립 및 실행, 사용자 경험 개선을 위한 데이터 기반 의사결정 주도"
-
-- 입력: "Figma, Notion 사용"
-- 출력: "Figma를 활용한 서비스 기획 및 와이어프레임 제작, Notion 기반 프로젝트 협업 및 문서화 경험"
-
-**중요**: 정보가 없는 섹션은 생략하고, 있는 정보만으로 최대한 전문적이고 매력적인 이력서를 만드세요.`
-        },
-        {
-          role: "user",
-          content: profileText
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 2000
+    // 회사 맥락 없이 컨설팅 리포트 생성
+    const consultingReport = await generateConsultingAdvice({
+      profileText,
+      companyContext: null
     });
 
-    const generatedResume = completion.choices[0].message.content;
+    if (!consultingReport) {
+      return res.status(500).json({
+        success: false,
+        message: '이력서 컨설팅 리포트 생성에 실패했습니다.'
+      });
+    }
 
-    // MongoDB에 이력서 저장
+    // MongoDB에 "이력서 컨설팅" 결과 저장
     const savedResume = new Resume({
-      content: generatedResume,
+      content: consultingReport,
       profileId: profile._id,
-      type: 'basic'
+      type: 'basic', // 필요하다면 'consulting_basic' 등으로 스키마에 맞게 변경
+      companyId: null,
+      companyName: null
     });
     await savedResume.save();
 
     // 성공 응답
     res.json({
       success: true,
-      message: '이력서가 성공적으로 생성되었습니다.',
+      message: '이력서 컨설팅 리포트가 성공적으로 생성되었습니다.',
       resumeId: savedResume._id,
-      resume: generatedResume,
-      profile: profile
+      resume: consultingReport,
+      profile
     });
-
   } catch (error) {
-    console.error('이력서 생성 오류:', error);
+    console.error('이력서 컨설팅 리포트 생성 오류:', error);
 
     res.status(500).json({
       success: false,
-      message: '이력서 생성 중 오류가 발생했습니다.',
+      message: '이력서 컨설팅 리포트 생성 중 오류가 발생했습니다.',
       error: error.message
     });
   }
@@ -135,15 +83,15 @@ router.post('/basic', async (req, res) => {
 
 // 프로필 데이터를 프롬프트용 텍스트로 변환하는 함수
 function formatProfileForPrompt(profile) {
-  let text = `다음은 이력서를 작성할 프로필 정보입니다. 없는 정보는 절대 추가하지 마세요.\n\n`;
+  let text = `다음은 이력서/자기소개서 컨설팅을 위한 프로필 정보입니다. 없는 정보는 절대 추가하지 마세요.\n\n`;
 
   // 기본 정보
   text += `=== 기본 정보 ===\n`;
-  text += `이름: ${profile.basicInfo.name}\n`;
-  text += `이메일: ${profile.basicInfo.email}\n`;
-  text += `전화번호: ${profile.basicInfo.phone || '정보 없음'}\n`;
-  text += `거주지: ${profile.basicInfo.location || '정보 없음'}\n`;
-  if (profile.basicInfo.links && profile.basicInfo.links.length > 0) {
+  text += `이름: ${profile.basicInfo?.name || '정보 없음'}\n`;
+  text += `이메일: ${profile.basicInfo?.email || '정보 없음'}\n`;
+  text += `전화번호: ${profile.basicInfo?.phone || '정보 없음'}\n`;
+  text += `거주지: ${profile.basicInfo?.location || '정보 없음'}\n`;
+  if (profile.basicInfo?.links && profile.basicInfo.links.length > 0) {
     text += `링크: ${profile.basicInfo.links.map(l => `${l.type}: ${l.url}`).join(', ')}\n`;
   } else {
     text += `링크: 정보 없음\n`;
@@ -151,10 +99,10 @@ function formatProfileForPrompt(profile) {
 
   // 구직 방향
   text += `\n=== 구직 방향 ===\n`;
-  text += `희망 직무: ${profile.jobPreference.desiredPosition || '정보 없음'}\n`;
-  text += `경력 구분: ${profile.jobPreference.careerLevel || '정보 없음'}\n`;
-  text += `근무 형태: ${profile.jobPreference.workType || '정보 없음'}\n`;
-  text += `산업: ${profile.jobPreference.industry || '정보 없음'}\n`;
+  text += `희망 직무: ${profile.jobPreference?.desiredPosition || '정보 없음'}\n`;
+  text += `경력 구분: ${profile.jobPreference?.careerLevel || '정보 없음'}\n`;
+  text += `근무 형태: ${profile.jobPreference?.workType || '정보 없음'}\n`;
+  text += `산업: ${profile.jobPreference?.industry || '정보 없음'}\n`;
 
   // 학력
   if (profile.education && profile.education.length > 0) {
@@ -166,7 +114,7 @@ function formatProfileForPrompt(profile) {
       if (edu.description) text += `   설명: ${edu.description}\n`;
     });
   } else {
-    text += `\n=== 학력 ===\n정보 없음 (이 섹션은 이력서에서 생략하거나 "정보 없음"으로 표시하세요)\n`;
+    text += `\n=== 학력 ===\n정보 없음\n`;
   }
 
   // 경력
@@ -178,7 +126,7 @@ function formatProfileForPrompt(profile) {
       if (exp.description) text += `   업무 내용: ${exp.description}\n`;
     });
   } else {
-    text += `\n=== 경력 ===\n정보 없음 (이 섹션은 이력서에서 생략하거나 "경력 없음"으로 표시하세요)\n`;
+    text += `\n=== 경력 ===\n정보 없음\n`;
   }
 
   // 프로젝트
@@ -193,19 +141,25 @@ function formatProfileForPrompt(profile) {
       if (proj.url) text += `   URL: ${proj.url}\n`;
     });
   } else {
-    text += `\n=== 프로젝트 ===\n정보 없음 (이 섹션은 이력서에서 생략하거나 "프로젝트 경험 없음"으로 표시하세요)\n`;
+    text += `\n=== 프로젝트 ===\n정보 없음\n`;
   }
 
   // 스킬
   text += `\n=== 기술 및 역량 ===\n`;
-  const hasSkills = profile.skills.jobSkills || profile.skills.tools || profile.skills.languages || profile.skills.softSkills;
+  const hasSkills =
+    (profile.skills && (
+      profile.skills.jobSkills ||
+      profile.skills.tools ||
+      profile.skills.languages ||
+      profile.skills.softSkills
+    ));
   if (hasSkills) {
     if (profile.skills.jobSkills) text += `직무 스킬: ${profile.skills.jobSkills}\n`;
     if (profile.skills.tools) text += `도구: ${profile.skills.tools}\n`;
     if (profile.skills.languages) text += `언어: ${profile.skills.languages}\n`;
     if (profile.skills.softSkills) text += `소프트 스킬: ${profile.skills.softSkills}\n`;
   } else {
-    text += `정보 없음 (이 섹션은 이력서에서 생략하거나 "기술 정보 없음"으로 표시하세요)\n`;
+    text += `정보 없음\n`;
   }
 
   // 자격증
@@ -215,7 +169,7 @@ function formatProfileForPrompt(profile) {
       text += `${idx + 1}. ${cert.name} (${cert.issuer}, ${cert.date})\n`;
     });
   } else {
-    text += `\n=== 자격증 ===\n정보 없음 (이 섹션은 이력서에서 생략하세요)\n`;
+    text += `\n=== 자격증 ===\n정보 없음\n`;
   }
 
   // 수상
@@ -226,158 +180,121 @@ function formatProfileForPrompt(profile) {
       if (award.description) text += `   ${award.description}\n`;
     });
   } else {
-    text += `\n=== 수상 경력 ===\n정보 없음 (이 섹션은 이력서에서 생략하세요)\n`;
+    text += `\n=== 수상 경력 ===\n정보 없음\n`;
   }
 
   // 자기소개
-  if (profile.summary.oneLine) {
+  if (profile.summary?.oneLine) {
     text += `\n=== 한 줄 소개 ===\n${profile.summary.oneLine}\n`;
   } else {
     text += `\n=== 한 줄 소개 ===\n정보 없음\n`;
   }
-  if (profile.summary.keywords) {
+  if (profile.summary?.keywords) {
     text += `\n=== 키워드 ===\n${profile.summary.keywords}\n`;
   } else {
     text += `\n=== 키워드 ===\n정보 없음\n`;
   }
-  if (profile.summary.notes) {
+  if (profile.summary?.notes) {
     text += `\n=== 추가 메모 ===\n${profile.summary.notes}\n`;
   }
 
   return text;
 }
 
-// POST /api/generate/custom - 기업 맞춤형 이력서 생성
-router.post('/custom', async (req, res) => {
-  try {
-    const { profileId, companyAnalysis, companyName, companyId } = req.body;
+// 컨설턴트형 이력서/자소서 전략 리포트 생성
+async function generateConsultingAdvice({ profileText, companyContext }) {
+  const contextPart = companyContext
+    ? `\n\n[지원 회사/직무 정보]\n${companyContext}`
+    : '';
 
-    if (!profileId) {
-      return res.status(400).json({
-        success: false,
-        message: '프로필 ID가 필요합니다.'
-      });
-    }
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini', // 필요시 gpt-4.1-mini 등으로 변경
+    temperature: 0.3,
+    top_p: 0.8,
+    max_tokens: 3000,
+    messages: [
+      {
+        role: 'system',
+        content: `너는 취업 준비생을 돕는 "이력서/자기소개서 컨설턴트"이다.
 
-    if (!companyAnalysis) {
-      return res.status(400).json({
-        success: false,
-        message: '기업 분석 정보가 필요합니다.'
-      });
-    }
+가장 중요한 역할:
+- 사용자가 입력한 프로필(경력, 프로젝트, 공모전, 스킬 등)을 분석해서
+  1) 강점과 약점,
+  2) 전체적인 어필 포인트,
+  3) 어떤 내용은 강조하고, 어떤 내용은 줄이거나 숨기는 게 좋은지,
+  4) 이력서/자소서/포트폴리오 프레젠테이션의 흐름(스토리라인),
+  5) 자기소개서에서 활용할 수 있는 표현 가이드
+  를 제안하는 것이다.
 
-    // 프로필 조회
-    const profile = await Profile.findById(profileId);
+절대 하지 말 것:
+- 이력서/자기소개서를 대신 작성하지 않는다.
+- 사용자의 표현을 완전히 대체하는 "완성본 문장"을 길게 생성하지 않는다.
+- 제공되지 않은 경험·성과·직무 내용을 임의로 창작하지 않는다.
 
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: '프로필을 찾을 수 없습니다.'
-      });
-    }
+출력 형식:
+항상 아래 6개 섹션으로 나누어 한국어로 답변한다.
 
-    // 프로필 데이터를 텍스트로 변환
-    const profileText = formatProfileForPrompt(profile);
+1. 개요
+   - 사용자 프로필을 한 문단으로 요약하되, 서술 시제는 현재형이 아니라 ‘완료형(…해왔습니다, …경험을 쌓아왔습니다)’으로 작성한다.
+   - “~하고 있습니다 / ~진행 중입니다” 같은 현재진행형 표현은 사용하지 않는다.
+   - 어떤 포지션에 적합한지 한 줄로 정리하되, 그 설명 또한 완료형으로 자연스럽게 마무리한다.
 
-    // OpenAI GPT를 사용하여 맞춤형 이력서 생성
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `당신은 10년 경력의 채용 컨설턴트이자 이력서 작성 전문가입니다. 주어진 프로필 정보와 타겟 기업 분석을 바탕으로 **해당 기업의 채용 담당자가 반드시 면접 보고 싶게 만드는** 맞춤형 이력서를 작성해주세요.
+2. 강점 & 약점 분석
+   - 강점: 3~5개 bullet(근거 포함)
+   - 약점/리스크: 3~5개 bullet(이유 + 보완 전략 포함)
 
-**절대 규칙 (반드시 준수):**
-1. 제공된 프로필 정보만 사용하세요. 프로필에 없는 정보는 절대 추가하거나 만들어내지 마세요.
-2. 기업이 요구하는 기술/경험이 프로필에 없으면, 거짓으로 채우지 마세요.
-3. 프로필에 경력, 프로젝트, 기술 스택이 없으면 해당 섹션을 생략하세요.
+     문체 규칙(중요)
+   - 강점과 약점/리스크 모두 반드시 존댓말 보고서 문체로 작성합니다.
+   - 문장의 끝은 “~합니다”, “~하고 있습니다”, “~되어 있습니다”, “~상황입니다”처럼 정중한 형태로 통일합니다.
+   - “~이다”, “~다”, “~부족하다”, “~필요하다”, “~한 상태다” 등의 서술체·반말체는 절대로 사용하지 않습니다.
 
-**맞춤형 이력서 작성 전략:**
-1. **기업 요구사항 매칭**:
-   - 기업 분석에서 요구하는 역량/기술과 프로필의 경험을 연결하세요
-   - 프로필의 경험을 기업의 언어로 재해석하세요
-   - 예: 기업이 "데이터 기반 의사결정"을 중시 → 프로필의 "데이터 분석" 경험을 "데이터 기반 서비스 개선 및 의사결정 지원"으로 표현
+     절대 하지 말 것
+   - 미래 계획을 넣지 않습니다. (“~할 계획입니다”, “~할 예정입니다” 금지)
+   - 약점을 과도하게 부정적으로 표현하지 않습니다.
+   - 강점과 약점 모두에서 창작/과장 금지(프로필 기반 정보만 사용)
 
-2. **성과와 임팩트 강조**:
-   - 프로필의 경력/프로젝트를 기업이 원하는 성과 중심으로 재구성
-   - 액션 동사 사용: "주도", "개선", "달성", "기여", "리드"
-   - 예: "콘텐츠 운영" → "콘텐츠 운영 전략 수립 및 실행을 통한 사용자 참여도 제고"
+3. 프레젠테이션 전략
+   - 서론 이미지 설정
+   - 프로젝트/경력 정렬 방식
+   - 기술/스킬 강조 전략
+   - 이력서 섹션 구성 추천
 
-3. **기업 문화 반영**:
-   - 기업 분석의 문화/가치와 맞는 표현 사용 (프로필 범위 내에서)
-   - 기업이 협업을 중시 → 프로필의 팀 프로젝트 경험을 "크로스 펑셔널 협업" 등으로 강조
-   - 기업이 혁신을 중시 → 프로필의 개선/제안 경험을 "혁신적 문제 해결" 등으로 표현
+4. 줄이거나 숨기는 요소
+   - 약한 경험, 중복 경험, 직무와 관련성 낮은 내용
+   - 간결하게 처리하는 방법까지 제안
 
-4. **우선순위 재배치**:
-   - 기업 요구사항과 가장 관련 높은 경험을 먼저 배치
-   - 프로필의 모든 정보를 나열하지 말고, 기업에 어필할 내용만 선별
+5. 문장/표현 예시
+   - 직접 작성 시 참고할 수 있는 문장 3~7개 제공
+   - 실제 사실을 포함하지 않고 표현 방식만 가이드
 
-5. **전문성 포장**:
-   - 도구/기술: "사용 가능" → "실무 활용 경험 보유"
-   - 역할: "담당" → "주도적으로 기획 및 실행"
-   - 성과: 구체적 수치나 결과가 없어도 "기여", "개선", "향상" 등으로 표현
+6. 1분 자기소개 스피치 예시 (반드시 55~65초 분량)
+   - 이 섹션은 마크다운 불릿(-, *, 숫자 목록)을 사용하지 않고, 하나의 스피치 텍스트로 작성한다.
+   - 스피치는 2~3개의 문단으로 구성된 연속된 글이어야 하며, 각 문장은 자연스럽게 이어져야 한다.
+   - 전체 길이는 55~65초 분량으로, 8~12개의 문장, 최소 380자 이상이 되도록 충분히 길게 작성한다.
+   - 경험을 단순 나열하지 말고, ‘어떤 동기로 시작했고, 어떤 경험을 했으며, 무엇을 배우고 성장했는지, 앞으로 어떤 방향을 지향하는지’를 이야기 흐름으로 구성한다.
+   - 프로필에 없는 사실·경험·직무를 창작하거나 과장하는 것을 금지한다.
+   - 특정 회사명·학교명·직책 등은 프로필에 존재하는 경우에만 자연스럽게 포함하되, 과도히 디테일하게 늘어놓지 않는다.
+   - 완성된 자기소개서처럼 딱딱한 문서체가 아니라, 실제 면접 자리에서 말하는 것 같은 구어체에 가깝게 작성한다.
 
-**이력서 구조 (기업 맞춤형):**
-1. **개인 정보**: 이름, 연락처, 이메일
-2. **지원 동기 한 줄** (한 줄 소개 활용): 기업이 원하는 인재상에 부합하도록 재작성
-3. **핵심 역량**: 기업 요구사항과 매칭되는 프로필 역량을 우선 배치
-4. **경력 사항** (있는 경우):
-   - 기업 요구사항과 관련된 업무/성과를 bullet points로 강조
-   - 각 경력을 기업의 직무와 연결
-5. **프로젝트 경험** (있는 경우):
-   - 기업 직무와 관련성 높은 프로젝트를 상세히
-   - 프로젝트 성과를 기업이 원하는 역량과 연결
-6. **학력**: 학교명, 전공, 학위, 기간 (관련 활동 포함)
-7. **기술 스택 및 도구**: 기업 요구 기술을 우선 배치
-8. **자격증 및 수상**: 관련성 높은 것 우선
+스타일:
+- 컨설턴트처럼 정중하고 논리적인 어조
+- “이렇게 하세요”보다 “이런 방향을 추천합니다”로 조언
+- 사용자의 강점을 적극적으로 재해석해 긍정적으로 전달`
+      },
+      {
+        role: 'user',
+        content: `다음은 지원자의 프로필 정보입니다.
 
-**예시 변환:**
-- 기업 요구: "사용자 중심 서비스 운영"
-- 프로필: "콘텐츠 운영 매니저, Notion/Figma 사용"
-- 출력: "사용자 경험 개선을 위한 콘텐츠 운영 전략 수립 및 실행. Notion 기반 협업 프로세스 구축, Figma 활용 서비스 기획 및 사용자 피드백 반영"
+[지원자 프로필]
+${profileText}
 
-**중요**: 프로필에 없는 정보는 절대 만들지 말고, 있는 정보를 기업에 맞게 최대한 매력적으로 포장하세요.`
-        },
-        {
-          role: "user",
-          content: `# 타겟 기업 정보 및 분석\n기업명: ${companyName || '미지정'}\n\n${companyAnalysis}\n\n---\n\n# 지원자 프로필\n${profileText}`
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 2500
-    });
+위 프로필을 기반으로, system에서 정의한 1~6번 섹션 형식 그대로 한국어로 답변해 주세요.
+특히 6번 스피치는 마크다운 불릿 없이, 하나의 스피치 텍스트(연속된 문단)로 작성해 주세요.`
+      }
+    ]
+  });
 
-    const generatedResume = completion.choices[0].message.content;
-
-    // MongoDB에 이력서 저장
-    const savedResume = new Resume({
-      content: generatedResume,
-      profileId: profile._id,
-      companyId: companyId || null,
-      type: 'custom',
-      companyName: companyName
-    });
-    await savedResume.save();
-
-    // 성공 응답
-    res.json({
-      success: true,
-      message: '맞춤형 이력서가 성공적으로 생성되었습니다.',
-      resumeId: savedResume._id,
-      resume: generatedResume,
-      profile: profile,
-      companyName: companyName
-    });
-
-  } catch (error) {
-    console.error('맞춤형 이력서 생성 오류:', error);
-
-    res.status(500).json({
-      success: false,
-      message: '맞춤형 이력서 생성 중 오류가 발생했습니다.',
-      error: error.message
-    });
-  }
-});
+  return completion.choices[0]?.message?.content || null;
+}
 
 export default router;

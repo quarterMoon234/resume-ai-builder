@@ -6,7 +6,7 @@ import connectDB from './config/db.js';
 // 라우트 가져오기
 import profileRoutes from './routes/profile.js';
 import generateRoutes from './routes/generate.js';
-import companyRoutes from './routes/company.js';
+import resumeRoutes from './routes/resume.js';
 
 // 환경 변수 로드
 dotenv.config();
@@ -26,10 +26,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// 라우트 연결 (나중에 구현 예정)
+// 라우트 연결
 app.use('/api/profile', profileRoutes);
 app.use('/api/generate', generateRoutes);
-app.use('/api/company', companyRoutes);
+app.use('/api/resume', resumeRoutes);
 
 // 서버 시작
 app.listen(PORT, () => {
