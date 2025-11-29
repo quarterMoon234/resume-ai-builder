@@ -42,6 +42,7 @@ function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedProfileId, setSavedProfileId] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingDesigned, setIsGeneratingDesigned] = useState(false);
   const [generatedResume, setGeneratedResume] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
@@ -417,6 +418,59 @@ function ProfilePage() {
 
       if (error.response) {
         alert(`이력서 생성 실패: ${error.response.data.message || '서버 오류'}`);
+      } else if (error.request) {
+        alert('서버와 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+      } else {
+        alert('요청 중 오류가 발생했습니다.');
+      }
+    }
+  };
+
+  // 디자인 이력서 생성
+  const handleGenerateDesignedResume = async () => {
+    if (!savedProfileId) {
+      alert('먼저 프로필을 저장해주세요!');
+      return;
+    }
+
+    setIsGeneratingDesigned(true);
+
+    try {
+      // 1단계: AI 템플릿 추천
+      console.log('=== 1단계: 템플릿 추천 중... ===');
+      const recommendResponse = await axios.post('/api/generate/recommend-template', {
+        profileId: savedProfileId
+      });
+
+      console.log('템플릿 추천 결과:', recommendResponse.data);
+      const { template } = recommendResponse.data;
+
+      // 2단계: 템플릿으로 이력서 생성
+      console.log('=== 2단계: 이력서 생성 중... ===');
+      const generateResponse = await axios.post('/api/generate/generate-with-template', {
+        profileId: savedProfileId,
+        templateId: template.id
+      });
+
+      console.log('이력서 생성 결과:', generateResponse.data);
+      const { resumeId } = generateResponse.data;
+
+      if (!resumeId) {
+        setIsGeneratingDesigned(false);
+        alert('이력서 ID를 받지 못했습니다.');
+        return;
+      }
+
+      // 3단계: 에디터 페이지로 이동
+      setIsGeneratingDesigned(false);
+      navigate(`/editor/${resumeId}`);
+
+    } catch (error) {
+      setIsGeneratingDesigned(false);
+      console.error('디자인 이력서 생성 오류:', error);
+
+      if (error.response) {
+        alert(`디자인 이력서 생성 실패: ${error.response.data.message || '서버 오류'}`);
       } else if (error.request) {
         alert('서버와 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
       } else {
@@ -1085,7 +1139,7 @@ function ProfilePage() {
             {isSaving ? '저장 중...' : '프로필 저장하기'}
           </button>
 
-          {/* 이력서 생성 버튼 */}
+          {/* 텍스트 이력서 생성 버튼 */}
           <button
             type="button"
             onClick={handleGenerateResume}
@@ -1096,7 +1150,21 @@ function ProfilePage() {
                 : 'bg-purple-600 text-white hover:bg-purple-700'
             }`}
           >
-            {isGenerating ? '이력서 생성 중...' : 'AI 이력서 생성'}
+            {isGenerating ? '컨설팅 생성 중...' : '📝 컨설팅 리포트'}
+          </button>
+
+          {/* 디자인 이력서 생성 버튼 */}
+          <button
+            type="button"
+            onClick={handleGenerateDesignedResume}
+            disabled={!savedProfileId || isGeneratingDesigned}
+            className={`px-8 py-3 font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+              !savedProfileId || isGeneratingDesigned
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                : 'bg-pink-600 text-white hover:bg-pink-700'
+            }`}
+          >
+            {isGeneratingDesigned ? '디자인 생성 중...' : '🎨 디자인 이력서'}
           </button>
         </div>
       </form>

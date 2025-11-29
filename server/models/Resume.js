@@ -4,7 +4,6 @@ const resumeSchema = new mongoose.Schema(
   {
     content: {
       type: String,
-      required: true,
       trim: true
     },
     profileId: {
@@ -19,10 +18,24 @@ const resumeSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['basic', 'custom'],
+      enum: ['basic', 'custom', 'designed'],
       required: true
     },
     companyName: {
+      type: String,
+      default: null
+    },
+    // 디자인 이력서용 필드 추가
+    templateId: {
+      type: String,
+      default: null
+    },
+    layout: {
+      type: Object,
+      default: null
+    },
+    // 컨설팅 리포트 필드 추가
+    consultingReport: {
       type: String,
       default: null
     }

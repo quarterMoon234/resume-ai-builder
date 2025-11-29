@@ -84,6 +84,8 @@ router.get('/:id', async (req, res) => {
         content: resume.content,
         type: resume.type,
         companyName: resume.companyName,
+        templateId: resume.templateId,
+        layout: resume.layout,
         createdAt: resume.createdAt,
         updatedAt: resume.updatedAt,
         profile: resume.profileId,
@@ -95,6 +97,48 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: '이력서 조회에 실패했습니다.',
+      error: error.message
+    });
+  }
+});
+
+// PUT /api/resume/:id - 이력서 레이아웃 업데이트
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { layout } = req.body;
+
+    if (!layout) {
+      return res.status(400).json({
+        success: false,
+        message: '레이아웃 데이터가 필요합니다.'
+      });
+    }
+
+    // 이력서 찾기 및 업데이트
+    const resume = await Resume.findByIdAndUpdate(
+      id,
+      { layout, updatedAt: new Date() },
+      { new: true }
+    );
+
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        message: '이력서를 찾을 수 없습니다.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '이력서가 업데이트되었습니다.',
+      resume
+    });
+  } catch (error) {
+    console.error('이력서 업데이트 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '이력서 업데이트에 실패했습니다.',
       error: error.message
     });
   }

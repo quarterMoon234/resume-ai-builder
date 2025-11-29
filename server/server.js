@@ -7,6 +7,8 @@ import connectDB from './config/db.js';
 import profileRoutes from './routes/profile.js';
 import generateRoutes from './routes/generate.js';
 import resumeRoutes from './routes/resume.js';
+import pdfRoutes from './routes/pdf.js';
+import templateRoutes from './routes/template.js';
 
 // 환경 변수 로드
 dotenv.config();
@@ -30,6 +32,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/profile', profileRoutes);
 app.use('/api/generate', generateRoutes);
 app.use('/api/resume', resumeRoutes);
+app.use('/api/pdf', pdfRoutes);
+app.use('/api/template', templateRoutes);
 
 // 서버 시작
 app.listen(PORT, () => {

@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import Profile from '../models/Profile.js';
 import Resume from '../models/Resume.js';
 import dotenv from 'dotenv';
+import { getAllTemplates, getTemplateById, getTemplateMetadata } from '../templates/index.js';
 
 // 환경 변수 로드
 dotenv.config();
@@ -296,5 +297,258 @@ ${profileText}
 
   return completion.choices[0]?.message?.content || null;
 }
+
+/**
+ * POST /api/generate/recommend-template
+ * AI가 프로필을 분석하여 최적의 템플릿 추천
+ */
+router.post('/recommend-template', async (req, res) => {
+  try {
+    const { profileId } = req.body;
+
+    if (!profileId) {
+      return res.status(400).json({
+        success: false,
+        message: '프로필 ID가 필요합니다.'
+      });
+    }
+
+    // 프로필 조회
+    const profile = await Profile.findById(profileId);
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: '프로필을 찾을 수 없습니다.'
+      });
+    }
+
+    // 프로필 텍스트 변환
+    const profileText = formatProfileForPrompt(profile);
+
+    // 템플릿 메타데이터 가져오기
+    const templates = getTemplateMetadata();
+
+    // GPT-4o에게 템플릿 추천 요청
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0.3,
+      max_tokens: 500,
+      messages: [
+        {
+          role: 'system',
+          content: `당신은 이력서 디자인 전문 컨설턴트입니다.
+지원자의 프로필을 분석하여 가장 적합한 이력서 템플릿을 추천해주세요.
+
+다음 기준으로 판단하세요:
+1. 산업/직무 적합성 - 지원 분야와 템플릿의 스타일이 잘 맞는가?
+2. 경력 수준 - 신입/경력에 따른 적절한 레이아웃
+3. 강점 부각 - 지원자의 강점을 가장 잘 드러낼 수 있는 구조
+4. 전문성 - 해당 산업의 관행과 기대치 부합
+
+응답은 반드시 다음 JSON 형식으로 해주세요:
+{
+  "recommendedTemplateId": "템플릿ID",
+  "reason": "추천 이유 (2-3문장, 한국어)",
+  "layoutSuggestion": "이 템플릿을 어떻게 활용하면 좋을지 조언 (1-2문장, 한국어)"
+}`
+        },
+        {
+          role: 'user',
+          content: `[지원자 프로필]
+${profileText}
+
+[사용 가능한 템플릿 목록]
+${JSON.stringify(templates, null, 2)}
+
+위 프로필을 분석하여 가장 적합한 템플릿을 추천해주세요.`
+        }
+      ]
+    });
+
+    const responseText = completion.choices[0].message.content;
+
+    // JSON 파싱 (코드 블록 제거)
+    let recommendation;
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      recommendation = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+    } catch (parseError) {
+      console.error('JSON 파싱 오류:', parseError);
+      return res.status(500).json({
+        success: false,
+        message: 'AI 응답 파싱에 실패했습니다.',
+        rawResponse: responseText
+      });
+    }
+
+    // 추천된 템플릿 가져오기
+    const selectedTemplate = getTemplateById(recommendation.recommendedTemplateId);
+
+    if (!selectedTemplate) {
+      return res.status(404).json({
+        success: false,
+        message: '추천된 템플릿을 찾을 수 없습니다.',
+        recommendation
+      });
+    }
+
+    res.json({
+      success: true,
+      recommendation,
+      template: selectedTemplate
+    });
+
+  } catch (error) {
+    console.error('템플릿 추천 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '템플릿 추천 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/generate/generate-with-template
+ * 선택된 템플릿으로 이력서 컨텐츠 생성
+ */
+router.post('/generate-with-template', async (req, res) => {
+  try {
+    const { profileId, templateId } = req.body;
+
+    if (!profileId || !templateId) {
+      return res.status(400).json({
+        success: false,
+        message: '프로필 ID와 템플릿 ID가 필요합니다.'
+      });
+    }
+
+    // 프로필 조회
+    const profile = await Profile.findById(profileId);
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: '프로필을 찾을 수 없습니다.'
+      });
+    }
+
+    // 템플릿 조회
+    const template = getTemplateById(templateId);
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        message: '템플릿을 찾을 수 없습니다.'
+      });
+    }
+
+    const profileText = formatProfileForPrompt(profile);
+
+    // 템플릿에 맞는 컨텐츠 생성
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0.3,
+      max_tokens: 2500,
+      messages: [
+        {
+          role: 'system',
+          content: `당신은 이력서 작성 전문가입니다.
+
+선택된 템플릿: ${template.name} (${template.description})
+
+다음 섹션별로 내용을 생성해주세요. 각 섹션은 HTML 형식으로 작성해주세요:
+
+필수 섹션:
+- name: 이름 (텍스트만)
+- contact: 연락처 정보 (이메일, 전화번호, 거주지를 한 줄로)
+- summary: 한 줄 소개 (2-3문장, 핵심 강점과 목표 중심)
+- experienceSection: 경력 사항 (HTML 형식, <h3> 섹션 제목, <div> 항목별 정리)
+- skillsSection: 핵심 스킬 (HTML 형식, bullet point)
+- educationSection: 학력 (HTML 형식)
+- certificationsSection: 자격증 (HTML 형식)
+
+선택 섹션 (프로필에 있을 경우만):
+- projectsSection: 주요 프로젝트
+- profilePhoto: 프로필 사진 URL (있을 경우만)
+
+중요 규칙:
+1. 프로필에 없는 정보는 절대 생성하지 마세요
+2. 없는 섹션은 빈 문자열("")로 반환하세요
+3. HTML 태그를 적절히 사용하여 가독성 있게 작성하세요
+4. 섹션 제목은 <h3> 태그 사용
+5. 각 항목은 <div> 또는 <p> 태그로 구분
+
+응답은 반드시 다음 JSON 형식으로:
+{
+  "name": "이름",
+  "contact": "연락처 정보",
+  "summary": "한 줄 소개",
+  "experienceSection": "경력 HTML",
+  "skillsSection": "스킬 HTML",
+  "educationSection": "학력 HTML",
+  "certificationsSection": "자격증 HTML",
+  "projectsSection": "프로젝트 HTML (선택)",
+  "profilePhoto": "사진 URL (선택)"
+}`
+        },
+        {
+          role: 'user',
+          content: profileText
+        }
+      ]
+    });
+
+    const responseText = completion.choices[0].message.content;
+
+    // JSON 파싱
+    let content;
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      content = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+    } catch (parseError) {
+      console.error('JSON 파싱 오류:', parseError);
+      return res.status(500).json({
+        success: false,
+        message: 'AI 응답 파싱에 실패했습니다.',
+        rawResponse: responseText
+      });
+    }
+
+    // 템플릿과 컨텐츠를 결합한 초기 레이아웃 생성
+    const initialLayout = {
+      template: template,
+      elements: template.layout.elements.map(el => ({
+        ...el,
+        content: content[el.id] || ''
+      }))
+    };
+
+    // Resume 모델에 저장
+    const resume = new Resume({
+      profileId: profile._id,
+      type: 'designed',
+      templateId: template.id,
+      layout: initialLayout,
+      content: JSON.stringify(content)
+    });
+    await resume.save();
+
+    res.json({
+      success: true,
+      message: '디자인 이력서가 성공적으로 생성되었습니다.',
+      resumeId: resume._id,
+      initialLayout,
+      content
+    });
+
+  } catch (error) {
+    console.error('이력서 생성 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '이력서 생성 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
 
 export default router;
