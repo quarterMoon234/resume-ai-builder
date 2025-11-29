@@ -86,6 +86,7 @@ router.get('/:id', async (req, res) => {
         companyName: resume.companyName,
         templateId: resume.templateId,
         layout: resume.layout,
+        consultingReport: resume.consultingReport,
         createdAt: resume.createdAt,
         updatedAt: resume.updatedAt,
         profile: resume.profileId,
@@ -102,23 +103,21 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/resume/:id - 이력서 레이아웃 업데이트
+// PUT /api/resume/:id - 이력서 레이아웃 및 컨설팅 리포트 업데이트
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { layout } = req.body;
+    const { layout, consultingReport } = req.body;
 
-    if (!layout) {
-      return res.status(400).json({
-        success: false,
-        message: '레이아웃 데이터가 필요합니다.'
-      });
-    }
+    // 업데이트할 필드 준비
+    const updateFields = { updatedAt: new Date() };
+    if (layout) updateFields.layout = layout;
+    if (consultingReport) updateFields.consultingReport = consultingReport;
 
     // 이력서 찾기 및 업데이트
     const resume = await Resume.findByIdAndUpdate(
       id,
-      { layout, updatedAt: new Date() },
+      updateFields,
       { new: true }
     );
 

@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DraggableElement from '../components/DraggableElement';
 import EditorToolbar from '../components/EditorToolbar';
+import ConsultingPanel from '../components/ConsultingPanel';
 
 function ResumeEditorPage() {
   const { resumeId } = useParams();
@@ -15,6 +16,8 @@ function ResumeEditorPage() {
   const [loading, setLoading] = useState(true);
   const [zoom, setZoom] = useState(0.8);
   const [saving, setSaving] = useState(false);
+  const [consultingReport, setConsultingReport] = useState(null);
+  const [isPanelVisible, setIsPanelVisible] = useState(true);
 
   useEffect(() => {
     loadResume();
@@ -32,6 +35,7 @@ function ResumeEditorPage() {
       }
 
       setLayout(resume.layout);
+      setConsultingReport(resume.consultingReport || null);
       setLoading(false);
     } catch (error) {
       console.error('이력서 로드 오류:', error);
@@ -172,6 +176,14 @@ function ResumeEditorPage() {
               <p className="text-sm text-gray-500">요소를 드래그하여 이동, 더블클릭으로 편집</p>
             </div>
             <div className="flex gap-2">
+              {consultingReport && (
+                <button
+                  onClick={() => setIsPanelVisible(!isPanelVisible)}
+                  className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200"
+                >
+                  {isPanelVisible ? '📝 패널 닫기' : '📝 컨설팅 보기'}
+                </button>
+              )}
               <button
                 onClick={() => navigate('/history')}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
@@ -211,6 +223,13 @@ function ResumeEditorPage() {
             </div>
           </div>
         </div>
+
+        {/* 오른쪽: 컨설팅 패널 */}
+        <ConsultingPanel
+          consultingReport={consultingReport}
+          isVisible={isPanelVisible}
+          onToggle={() => setIsPanelVisible(false)}
+        />
       </div>
     </DndProvider>
   );
