@@ -29,7 +29,7 @@ function ResumeHistoryPage() {
   };
 
   const handleResumeClick = (resumeId) => {
-    navigate(`/result/${resumeId}`);
+    navigate(`/editor/${resumeId}`);
   };
 
   const formatDate = (dateString) => {
@@ -87,43 +87,24 @@ function ResumeHistoryPage() {
           <p className="text-gray-600 mb-6">
             프로필을 입력하고 AI 이력서를 생성해보세요!
           </p>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={() => navigate('/')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-            >
-              기본 이력서 생성
-            </button>
-            <button
-              onClick={() => navigate('/company')}
-              className="px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700"
-            >
-              맞춤형 이력서 생성
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+          >
+            이력서 생성하기
+          </button>
         </div>
       ) : (
         <>
           {/* 통계 정보 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <p className="text-sm text-gray-600">총 이력서 수</p>
-              <p className="text-3xl font-bold text-gray-800 mt-1">
-                {resumes.length}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <p className="text-sm text-gray-600">기본 이력서</p>
-              <p className="text-3xl font-bold text-blue-600 mt-1">
-                {resumes.filter(r => r.type === 'basic').length}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <p className="text-sm text-gray-600">맞춤형 이력서</p>
-              <p className="text-3xl font-bold text-orange-600 mt-1">
-                {resumes.filter(r => r.type === 'custom').length}
-              </p>
-            </div>
+          <div className="bg-white rounded-lg shadow p-6 mb-8 text-center">
+            <p className="text-sm text-gray-600 mb-2">생성된 이력서</p>
+            <p className="text-5xl font-bold text-indigo-600">
+              {resumes.length}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              총 {resumes.length}개의 AI 생성 이력서
+            </p>
           </div>
 
           {/* 이력서 목록 */}
@@ -138,20 +119,9 @@ function ResumeHistoryPage() {
                   <div className="flex-1">
                     {/* 이력서 타입 배지 */}
                     <div className="flex items-center gap-2 mb-2">
-                      {resume.type === 'custom' ? (
-                        <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">
-                          🎯 맞춤형
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                          📄 기본
-                        </span>
-                      )}
-                      {resume.companyName && (
-                        <span className="text-sm text-gray-600">
-                          → {resume.companyName}
-                        </span>
-                      )}
+                      <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full">
+                        ✨ AI 생성 이력서
+                      </span>
                     </div>
 
                     {/* 프로필 정보 */}

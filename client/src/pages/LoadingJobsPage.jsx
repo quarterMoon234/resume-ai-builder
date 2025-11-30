@@ -82,7 +82,7 @@ function LoadingJobsPage() {
 
   const generateResume = async () => {
     try {
-      // 1단계: 템플릿 추천 (0-30%)
+      // 1단계: 템플릿 추천 (0-40%)
       setStatusMessage('🎨 AI가 최적의 템플릿을 추천하고 있습니다...');
       setProgress(10);
 
@@ -90,39 +90,21 @@ function LoadingJobsPage() {
         profileId
       });
       const { template } = recommendResponse.data;
-      setProgress(30);
-
-      // 2단계: 디자인 이력서 생성 (30-60%)
-      setStatusMessage('✍️ 이력서 내용을 작성하고 있습니다...');
       setProgress(40);
+
+      // 2단계: 디자인 이력서 + 컨설팅 리포트 통합 생성 (40-100%)
+      setStatusMessage('✨ AI가 이력서와 컨설팅 리포트를 작성하고 있습니다...');
+      setProgress(50);
 
       const generateResponse = await axios.post('/api/generate/generate-with-template', {
         profileId,
         templateId: template.id
       });
       const { resumeId } = generateResponse.data;
-      setProgress(60);
-
-      // 3단계: 컨설팅 리포트 생성 (60-90%)
-      setStatusMessage('📝 전문 컨설팅 리포트를 작성하고 있습니다...');
-      setProgress(70);
-
-      const consultingResponse = await axios.post('/api/generate/basic', {
-        profileId
-      });
-      const consultingReport = consultingResponse.data.resume;
-      setProgress(90);
-
-      // 4단계: 컨설팅 리포트를 Resume에 저장
-      setStatusMessage('💾 최종 결과를 저장하고 있습니다...');
-      await axios.put(`/api/resume/${resumeId}`, {
-        layout: generateResponse.data.initialLayout,
-        consultingReport: consultingReport
-      });
       setProgress(100);
 
       // 완료 후 에디터로 이동
-      setStatusMessage('✅ 완료! 결과 페이지로 이동합니다...');
+      setStatusMessage('✅ 완료! 에디터로 이동합니다...');
       setTimeout(() => {
         navigate(`/editor/${resumeId}`);
       }, 800);
@@ -166,17 +148,13 @@ function LoadingJobsPage() {
 
           {/* 진행 단계 표시 */}
           <div className="mt-8 flex justify-center gap-3">
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${progress >= 30 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              <span>{progress >= 30 ? '✓' : '1'}</span>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${progress >= 40 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              <span>{progress >= 40 ? '✓' : '1'}</span>
               <span>템플릿 추천</span>
             </div>
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${progress >= 60 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              <span>{progress >= 60 ? '✓' : '2'}</span>
-              <span>이력서 생성</span>
-            </div>
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${progress >= 90 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              <span>{progress >= 90 ? '✓' : '3'}</span>
-              <span>컨설팅 분석</span>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${progress >= 100 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              <span>{progress >= 100 ? '✓' : '2'}</span>
+              <span>이력서 + 컨설팅 생성</span>
             </div>
           </div>
         </div>

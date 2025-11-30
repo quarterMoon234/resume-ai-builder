@@ -7,7 +7,7 @@ const router = express.Router();
 // POST /api/resume - 이력서 저장
 router.post('/', async (req, res) => {
   try {
-    const { content, profileId, companyId, type, companyName } = req.body;
+    const { content, profileId, type } = req.body;
 
     // 필수 필드 검증
     if (!content || !profileId || !type) {
@@ -18,10 +18,10 @@ router.post('/', async (req, res) => {
     }
 
     // type 값 검증
-    if (!['basic', 'custom'].includes(type)) {
+    if (!['basic', 'designed'].includes(type)) {
       return res.status(400).json({
         success: false,
-        message: 'type은 basic 또는 custom이어야 합니다.'
+        message: 'type은 basic 또는 designed이어야 합니다.'
       });
     }
 
@@ -38,9 +38,7 @@ router.post('/', async (req, res) => {
     const newResume = new Resume({
       content,
       profileId,
-      companyId: companyId || null,
-      type,
-      companyName: companyName || null
+      type
     });
 
     const savedResume = await newResume.save();
@@ -83,14 +81,12 @@ router.get('/:id', async (req, res) => {
         id: resume._id,
         content: resume.content,
         type: resume.type,
-        companyName: resume.companyName,
         templateId: resume.templateId,
         layout: resume.layout,
         consultingReport: resume.consultingReport,
         createdAt: resume.createdAt,
         updatedAt: resume.updatedAt,
-        profile: resume.profileId,
-        company: resume.companyId
+        profile: resume.profileId
       }
     });
   } catch (error) {

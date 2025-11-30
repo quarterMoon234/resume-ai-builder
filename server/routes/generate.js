@@ -57,9 +57,7 @@ router.post('/basic', async (req, res) => {
     const savedResume = new Resume({
       content: consultingReport,
       profileId: profile._id,
-      type: 'basic', // 필요하다면 'consulting_basic' 등으로 스키마에 맞게 변경
-      companyId: null,
-      companyName: null
+      type: 'basic'
     });
     await savedResume.save();
 
@@ -523,22 +521,30 @@ router.post('/generate-with-template', async (req, res) => {
       }))
     };
 
-    // Resume 모델에 저장
+    // 컨설팅 리포트도 함께 생성
+    const consultingReport = await generateConsultingAdvice({
+      profileText,
+      companyContext: null
+    });
+
+    // Resume 모델에 저장 (layout + consultingReport 모두 포함)
     const resume = new Resume({
       profileId: profile._id,
       type: 'designed',
       templateId: template.id,
       layout: initialLayout,
-      content: JSON.stringify(content)
+      content: JSON.stringify(content),
+      consultingReport: consultingReport
     });
     await resume.save();
 
     res.json({
       success: true,
-      message: '디자인 이력서가 성공적으로 생성되었습니다.',
+      message: '디자인 이력서와 컨설팅 리포트가 성공적으로 생성되었습니다.',
       resumeId: resume._id,
       initialLayout,
-      content
+      content,
+      consultingReport
     });
 
   } catch (error) {
