@@ -10,58 +10,8 @@ function LoadingJobsPage() {
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('템플릿 추천 중...');
-
-  // 샘플 취업 공고
-  const jobPostings = [
-    {
-      company: 'Naver',
-      position: '프론트엔드 개발자',
-      location: '경기 성남시',
-      salary: '연봉 4000만원~6000만원',
-      tags: ['React', 'TypeScript', 'Next.js'],
-      logo: '🟢'
-    },
-    {
-      company: 'Kakao',
-      position: '백엔드 엔지니어',
-      location: '서울 판교',
-      salary: '연봉 5000만원~7000만원',
-      tags: ['Java', 'Spring', 'MySQL'],
-      logo: '💬'
-    },
-    {
-      company: 'Coupang',
-      position: '풀스택 개발자',
-      location: '서울 송파구',
-      salary: '연봉 6000만원~8000만원',
-      tags: ['Node.js', 'React', 'AWS'],
-      logo: '🚀'
-    },
-    {
-      company: 'Line',
-      position: 'DevOps 엔지니어',
-      location: '서울 강남구',
-      salary: '연봉 5500만원~7500만원',
-      tags: ['Kubernetes', 'Docker', 'CI/CD'],
-      logo: '💚'
-    },
-    {
-      company: 'Toss',
-      position: 'iOS 개발자',
-      location: '서울 역삼동',
-      salary: '연봉 7000만원~9000만원',
-      tags: ['Swift', 'SwiftUI', 'iOS'],
-      logo: '💙'
-    },
-    {
-      company: 'Baemin',
-      position: '안드로이드 개발자',
-      location: '서울 송파구',
-      salary: '연봉 6500만원~8500만원',
-      tags: ['Kotlin', 'Android', 'MVVM'],
-      logo: '🍔'
-    }
-  ];
+  const [jobPostings, setJobPostings] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
 
   useEffect(() => {
     if (!profileId) {
@@ -69,16 +19,48 @@ function LoadingJobsPage() {
       return;
     }
 
-    // 취업 공고 슬라이드 효과
-    const jobInterval = setInterval(() => {
-      setCurrentJobIndex(prev => (prev + 1) % jobPostings.length);
-    }, 2500); // 2.5초마다 공고 변경
+    // 채용 공고 API 호출
+    loadJobPostings();
 
     // AI 이력서 생성 프로세스
     generateResume();
-
-    return () => clearInterval(jobInterval);
   }, [profileId]);
+
+  useEffect(() => {
+    // 채용 공고가 로드되면 슬라이드 시작
+    if (jobPostings.length > 0) {
+      const jobInterval = setInterval(() => {
+        setCurrentJobIndex(prev => (prev + 1) % jobPostings.length);
+      }, 2500); // 2.5초마다 공고 변경
+
+      return () => clearInterval(jobInterval);
+    }
+  }, [jobPostings]);
+
+  const loadJobPostings = async () => {
+    try {
+      console.log('[LoadingPage] 채용 공고 로딩 시작 - 랜덤 채용 공고');
+      setJobsLoading(true);
+
+      // 랜덤 채용 공고 조회
+      const response = await axios.get('/api/jobs');
+
+      if (response.data.success && response.data.jobs.length > 0) {
+        setJobPostings(response.data.jobs);
+        console.log('[LoadingPage] 랜덤 채용 공고 로드 성공:', response.data.jobs.length, '개');
+      } else {
+        console.warn('[LoadingPage] 채용 공고가 없습니다.');
+        // 빈 배열로 설정 (UI에서 처리)
+        setJobPostings([]);
+      }
+    } catch (error) {
+      console.error('[LoadingPage] 채용 공고 로드 오류:', error);
+      // 오류 발생 시 빈 배열
+      setJobPostings([]);
+    } finally {
+      setJobsLoading(false);
+    }
+  };
 
   const generateResume = async () => {
     try {
@@ -163,63 +145,93 @@ function LoadingJobsPage() {
         <div className="bg-white rounded-2xl shadow-xl p-6 transition-all duration-500 hover:shadow-2xl">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-800">
-              💼 추천 채용 공고
+              💼 실시간 채용 공고
             </h3>
-            <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-              {currentJobIndex + 1} / {jobPostings.length}
-            </span>
+            {jobPostings.length > 0 && (
+              <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                {currentJobIndex + 1} / {jobPostings.length}
+              </span>
+            )}
           </div>
 
-          <div className="border-l-4 border-indigo-500 pl-5 py-3 transition-all duration-500">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-4xl">{currentJob.logo}</span>
-              <div>
-                <h4 className="text-xl font-bold text-gray-900">
-                  {currentJob.company}
-                </h4>
-                <p className="text-lg text-gray-700">{currentJob.position}</p>
+          {jobsLoading ? (
+            // 로딩 중
+            <div className="border-l-4 border-gray-300 pl-5 py-8 text-center">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-3"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
               </div>
+              <p className="text-gray-500 text-sm mt-4">채용 공고를 불러오는 중...</p>
             </div>
+          ) : jobPostings.length === 0 ? (
+            // 공고 없음
+            <div className="border-l-4 border-yellow-400 pl-5 py-8 text-center">
+              <span className="text-4xl">📋</span>
+              <p className="text-gray-600 mt-3">현재 표시할 채용 공고가 없습니다.</p>
+              <p className="text-gray-400 text-sm mt-2">잠시 후 다시 시도해주세요.</p>
+            </div>
+          ) : (
+            // 공고 표시
+            <>
+              <div className="border-l-4 border-indigo-500 pl-5 py-3 transition-all duration-500">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-4xl">{currentJob.logo}</span>
+                  <div>
+                    <h4 className="text-xl font-bold text-gray-900">
+                      {currentJob.company}
+                    </h4>
+                    <p className="text-lg text-gray-700">{currentJob.position}</p>
+                  </div>
+                </div>
 
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center gap-2 text-gray-600">
-                <span>📍</span>
-                <span>{currentJob.location}</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <span>💰</span>
-                <span className="font-semibold">{currentJob.salary}</span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap mt-3">
-                {currentJob.tags.map((tag, idx) => (
-                  <span
-                    key={idx}
-                    className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium"
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <span>📍</span>
+                    <span>{currentJob.location}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <span>💰</span>
+                    <span className="font-semibold">{currentJob.salary}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap mt-3">
+                    {currentJob.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {currentJob.url && (
+                  <a
+                    href={currentJob.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg block text-center"
                   >
-                    {tag}
-                  </span>
+                    자세히 보기 →
+                  </a>
+                )}
+              </div>
+
+              {/* 인디케이터 */}
+              <div className="flex justify-center gap-2 mt-5">
+                {jobPostings.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      index === currentJobIndex
+                        ? 'bg-indigo-600 w-8'
+                        : 'bg-gray-300 w-2'
+                    }`}
+                  />
                 ))}
               </div>
-            </div>
-
-            <button className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg">
-              자세히 보기 →
-            </button>
-          </div>
-
-          {/* 인디케이터 */}
-          <div className="flex justify-center gap-2 mt-5">
-            {jobPostings.map((_, index) => (
-              <div
-                key={index}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  index === currentJobIndex
-                    ? 'bg-indigo-600 w-8'
-                    : 'bg-gray-300 w-2'
-                }`}
-              />
-            ))}
-          </div>
+            </>
+          )}
         </div>
 
         {/* 안내 메시지 */}

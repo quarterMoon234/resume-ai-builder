@@ -110,14 +110,27 @@ function ResumeEditorPage() {
   };
 
   const handleDownloadPDF = async () => {
+    console.log('PDF 다운로드 버튼 클릭됨');
+    console.log('현재 layout:', layout);
+
     try {
+      console.log('PDF 생성 API 호출 시작...');
+      // Vite proxy 우회: binary 데이터는 직접 서버로 요청
       const response = await axios.post(
-        '/api/pdf/generate',
+        'http://localhost:5001/api/pdf/generate',
         { layout },
         { responseType: 'blob' }
       );
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      console.log('PDF 생성 완료, 다운로드 시작...');
+      console.log('받은 데이터 정보:', {
+        type: response.data.type,
+        size: response.data.size,
+        isBlob: response.data instanceof Blob
+      });
+
+      // Blob을 직접 다운로드
+      const url = window.URL.createObjectURL(response.data);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `resume_${resumeId}.pdf`);
@@ -125,9 +138,11 @@ function ResumeEditorPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      console.log('PDF 다운로드 완료!');
     } catch (error) {
       console.error('PDF 생성 오류:', error);
-      alert('PDF 생성에 실패했습니다.');
+      console.error('에러 상세:', error.response?.data);
+      alert('PDF 생성에 실패했습니다: ' + error.message);
     }
   };
 

@@ -9,6 +9,7 @@ import generateRoutes from './routes/generate.js';
 import resumeRoutes from './routes/resume.js';
 import pdfRoutes from './routes/pdf.js';
 import templateRoutes from './routes/template.js';
+import jobsRoutes from './routes/jobs.js';
 
 // 환경 변수 로드
 dotenv.config();
@@ -34,6 +35,7 @@ app.use('/api/generate', generateRoutes);
 app.use('/api/resume', resumeRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/template', templateRoutes);
+app.use('/api/jobs', jobsRoutes);
 
 // 서버 시작
 app.listen(PORT, () => {

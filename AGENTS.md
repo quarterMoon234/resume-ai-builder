@@ -1,9 +1,9 @@
 # 프로젝트 현황 문서 (AGENTS.md)
 
 **생성일**: 2025-11-25
-**최종 업데이트**: 2025-11-30 (API 최적화 및 코드 정리 완료)
+**최종 업데이트**: 2025-12-01 (PDF 다운로드 수정 및 채용 API 통합 완료)
 **프로젝트명**: AI 기반 이력서 생성 & 컨설팅 웹서비스
-**버전**: 0.8.0 (API 최적화, 데이터베이스 최적화, 코드베이스 정리)
+**버전**: 0.9.0 (PDF corruption 해결, 공공기관 채용 API 통합, 랜덤 채용 공고)
 
 ---
 
@@ -24,6 +24,12 @@
 - **데이터베이스 최적화**: Resume 문서 생성 2개 → 1개로 통합
 - **라우팅 개선**: 이력서 히스토리에서 에디터로 직접 라우팅
 - **코드베이스 정리**: 불필요한 페이지 삭제, Resume 모델 필드 정리
+
+**v0.9.0 채용 API 및 PDF 개선:**
+- **PDF 다운로드 corruption 해결**: Vite proxy 우회로 binary 데이터 정상 처리
+- **공공기관 채용 API 통합**: 실시간 공공기관 채용 공고 표시
+- **랜덤 채용 공고**: Fisher-Yates 알고리즘으로 매번 다른 채용 공고 노출
+- **로딩 페이지 개선**: 실제 API 데이터로 채용공고 캐러셀 구현
 
 ---
 
@@ -83,7 +89,8 @@ claud-project/
 │   │   ├── generate.js                  (~450줄) ✅ AI 생성 (템플릿 추천 + 이력서 + 컨설팅)
 │   │   ├── resume.js                    (133줄) ✅ 이력서 CRUD API
 │   │   ├── pdf.js                       (~100줄) ✅ PDF 생성 API
-│   │   └── template.js                  (~50줄) ✅ 템플릿 조회 API
+│   │   ├── template.js                  (~50줄) ✅ 템플릿 조회 API
+│   │   └── jobs.js                      (201줄) ✅ 채용 공고 API (공공기관)
 │   ├── models/
 │   │   ├── Profile.js                   (96줄) ✅ 프로필 스키마
 │   │   └── Resume.js                    (51줄) ✅ 이력서 스키마
@@ -102,8 +109,9 @@ claud-project/
 └── AGENTS.md                            ✅ 프로젝트 현황 문서
 ```
 
-**총 코드 라인 수**: 약 2,730줄 (JS/JSX 파일만)
+**총 코드 라인 수**: 약 2,930줄 (JS/JSX 파일만)
 **v0.8.0 최적화로 약 70줄 감소** (2,800줄 → 2,730줄)
+**v0.9.0 채용 API로 약 200줄 증가** (2,730줄 → 2,930줄)
 
 ---
 
@@ -140,9 +148,11 @@ claud-project/
 
 #### ✅ 로딩 페이지 (LoadingJobsPage.jsx)
 - **채용공고 캐러셀**:
-  - 6개 샘플 채용공고 자동 슬라이드 (2.5초 간격)
+  - **실시간 공공기관 채용 공고** 자동 슬라이드 (2.5초 간격)
+  - **Fisher-Yates 알고리즘으로 랜덤 10개 선택** (50개 중)
   - 회사, 직무, 지역, 연봉, 기술 스택 정보 표시
   - 인디케이터로 현재 공고 위치 표시
+  - 로딩/에러 상태 처리
 
 - **진행률 표시**:
   - 2단계 프로그레스 바 (0% → 40% → 100%)
@@ -168,7 +178,7 @@ claud-project/
   - ✅ 스타일 편집 (폰트, 색상, 크기, 정렬)
   - ✅ 줌 기능 (50% ~ 150%)
   - ✅ 자동 저장
-  - ✅ PDF 다운로드 버튼
+  - ✅ **PDF 다운로드 (Vite proxy 우회로 corruption 해결)** (v0.9.0)
   - ✅ 컨설팅 패널 토글 (접기/펼치기)
 
 #### ✅ 컨설팅 패널 (ConsultingPanel.jsx)
@@ -360,6 +370,25 @@ claud-project/
   - A4 사이즈, 여백 제거
   - Content-Type: application/pdf
   - Content-Disposition: attachment
+  - **v0.9.0 개선**: Vite proxy 우회로 binary 데이터 corruption 해결
+
+#### ✅ 채용 공고 API 완성 (jobs.js) - v0.9.0 신규
+- **GET /api/jobs**: 공공기관 채용 공고 조회
+  - 응답: { success, jobs, totalCount }
+  - 공공데이터포털 API 연동 (`apis.data.go.kr`)
+  - 50개 채용 공고 요청 후 **Fisher-Yates 알고리즘**으로 랜덤 10개 선택
+  - 매 요청마다 다른 공고 제공 (랜덤 샘플링)
+  - 데이터 변환:
+    - `instNm` → company (기관명)
+    - `recrutPbancTtl` → position (채용공고 제목)
+    - `workRgnNmLst` → location (근무지역)
+    - `ncsCdNmLst` → tags (직무 태그 자동 추출)
+  - 헬퍼 함수:
+    - `formatSalary()`: 급여 정보 포맷팅
+    - `extractTags()`: IT/일반 키워드 기반 태그 추출
+    - `getOrgLogo()`: 기관 유형별 이모지 아이콘 반환
+    - `shuffleArray()`: Fisher-Yates 셔플 알고리즘
+  - 에러 처리: timeout 10초, 상세 로깅
 
 #### ✅ Resume 모델 완성
 - **models/Resume.js**: 이력서 저장 스키마 정의
@@ -394,6 +423,7 @@ claud-project/
   - OPENAI_API_KEY
   - MONGODB_URI
   - PORT
+  - PUBLIC_JOBS_SERVICE_KEY (v0.9.0 추가)
 
 ---
 
@@ -466,7 +496,16 @@ claud-project/
 - [x] App.jsx 라우트 정리 (/result/:id 제거)
 - [x] ResumeHistoryPage UI 단순화 (3개 카드 → 1개 카드)
 
-### Step 10: 추가 기능 (예정)
+### Step 10: PDF 다운로드 수정 및 채용 API 통합 ✅ 완료 (2025-12-01)
+- [x] PDF 다운로드 corruption 해결 (Vite proxy 우회)
+- [x] 공공기관 채용 API 연동 (공공데이터포털)
+- [x] Fisher-Yates 랜덤 셔플 알고리즘 구현
+- [x] 채용 공고 데이터 변환 로직 (API → Frontend 형식)
+- [x] LoadingJobsPage 실시간 데이터 연동
+- [x] 로딩/에러 상태 UI 구현
+
+### Step 11: 추가 기능 (예정)
+- [ ] 사람인 Open API 연동 (API 키 승인 대기 중)
 - [ ] 템플릿 추가 (현재 3개 → 10개 이상)
 - [ ] 리포트 편집 기능
 - [ ] 사용자 인증 (회원가입/로그인)
@@ -734,7 +773,25 @@ npm run dev
 - **코드 라인 약 70줄 감소** (2,800줄 → 2,730줄)
 - **코드 유지보수성 향상** (불필요한 페이지 및 필드 제거)
 
-### Milestone 9: 추가 기능 및 개선 (예정)
+### Milestone 9: PDF 다운로드 수정 및 채용 API 통합 ✅ 완료 (2025-12-01)
+- [x] PDF 다운로드 corruption 문제 분석 및 해결
+- [x] Vite proxy 우회 방식 구현 (direct server connection)
+- [x] 공공데이터포털 채용 API 연동
+- [x] jobs.js 라우트 구현 (201줄)
+- [x] Fisher-Yates 랜덤 셔플 알고리즘 구현
+- [x] LoadingJobsPage API 연동
+- [x] 채용 공고 데이터 변환 및 태그 추출 로직
+- [x] 로딩/에러 상태 UI 개선
+
+**성과:**
+- **PDF corruption 완전 해결** (Vite proxy의 binary 데이터 변조 문제)
+- **실시간 채용 공고 제공** (공공기관 채용 정보 10,000개 이상)
+- **랜덤 샘플링으로 다양성 확보** (50개 중 랜덤 10개)
+- **사용자 대기 시간 가치 극대화** (실제 취업 정보 노출)
+- **코드 라인 약 200줄 증가** (2,730줄 → 2,930줄)
+
+### Milestone 10: 추가 기능 및 개선 (예정)
+- [ ] 사람인 Open API 연동 (API 키 승인 대기 중)
 - [ ] 템플릿 추가 (현재 3개 → 10개 이상)
 - [ ] 리포트 편집 기능
 - [ ] 사용자 인증 시스템
@@ -773,13 +830,16 @@ npm run dev
 28. **API 통합 (v0.8.0)**: generate-with-template에서 컨설팅 리포트도 함께 생성하여 API 호출 및 DB 문서 생성 50% 감소
 29. **불필요한 페이지 제거 (v0.8.0)**: ResumeResultPage 삭제하고 에디터 페이지로 직접 라우팅하여 사용자 경험 개선
 30. **Resume 모델 단순화 (v0.8.0)**: companyId, companyName 필드 제거 및 type enum 정리로 스키마 복잡도 감소
+31. **Vite proxy 우회 (v0.9.0)**: PDF 다운로드 시 binary 데이터 corruption 방지를 위해 직접 서버 연결 사용
+32. **공공데이터포털 API 연동 (v0.9.0)**: 실시간 채용 공고 제공으로 대기 시간 가치 극대화
+33. **Fisher-Yates 셔플 알고리즘 (v0.9.0)**: 랜덤 채용 공고 선택으로 매번 다른 공고 노출, 사용자 참여도 향상
 
 ---
 
 ## 참고 정보
 
 - **개발 시작일**: 2025-11-25
-- **최종 업데이트**: 2025-11-30 (v0.8.0)
+- **최종 업데이트**: 2025-12-01 (v0.9.0)
 - **주요 개발 환경**: macOS (Darwin 24.6.0)
 - **Node.js**: ES Module 지원 버전
 - **Git**: 저장소 관리 중, 정기적 커밋 및 푸시
