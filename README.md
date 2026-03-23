@@ -1,174 +1,226 @@
-# AI 기반 이력서 생성 & 컨설팅 웹서비스 (v0.9.0)
+# AI Resume Builder
 
-사용자 프로필을 입력하면 AI가 자동으로 **이력서**와 **컨설팅 리포트**를 동시에 생성하는 올인원 웹서비스입니다.
-드래그 앤 드롭 에디터로 이력서를 자유롭게 편집하면서, AI 컨설턴트의 조언을 확인할 수 있습니다.
+사용자 프로필 정보를 바탕으로 AI가 디자인 이력서 초안과 컨설팅 리포트를 함께 생성하는 웹 서비스입니다. 생성된 이력서는 드래그 앤 드롭 에디터에서 수정할 수 있고, 우측 컨설팅 패널을 보면서 표현 방향과 어필 포인트를 함께 다듬을 수 있습니다.
 
-**최신 업데이트 (v0.9.0 - 2025-12-01)**:
-- **PDF 다운로드 corruption 해결**: Vite proxy 우회로 binary 데이터 정상 처리
-- **공공기관 채용 API 통합**: 실시간 공공기관 채용 공고 표시
-- **로딩 페이지 개선**: 실제 API 데이터로 채용공고 캐러셀 구현
+프론트엔드는 `React + Vite`, 백엔드는 `Express + MongoDB + OpenAI`, PDF 출력은 `Puppeteer` 기반으로 구성되어 있습니다.
+
+## 결과 화면
+
+### 이력서 초안 편집 화면
+
+![이력서 초안 편집 결과](./result1.png)
+
+### 컨설팅 리포트 패널
+
+![컨설팅 리포트 결과](./result2.png)
+
+## 주요 기능
+
+- 프로필 관리
+  - 이름, 이메일, 연락처, 링크, 희망 직무, 학력, 경력, 프로젝트, 스킬, 자격증, 수상, 자기소개를 한 번에 입력
+  - 프로필 저장, 조회, 수정, 삭제 지원
+- AI 템플릿 추천
+  - 프로필을 분석해 가장 적합한 이력서 템플릿 자동 추천
+- 통합 생성 플로우
+  - 로딩 페이지에서 템플릿 추천 후 디자인 이력서와 컨설팅 리포트를 함께 생성
+- 이력서 에디터
+  - 요소 드래그 이동, 크기 조절, 더블클릭 편집
+  - 스타일 편집 툴바와 컨설팅 패널을 포함한 3단 레이아웃
+- PDF 다운로드
+  - 편집된 레이아웃을 서버에서 PDF로 렌더링하여 다운로드
+- 채용 공고 캐러셀
+  - 공공기관 채용 API 데이터를 로딩 화면에 랜덤 노출
+- 이력서 히스토리
+  - 생성된 이력서를 목록에서 다시 열어 편집 가능
 
 ## 기술 스택
 
-- **Frontend**: React 18, Vite, Tailwind CSS, React Router DOM, Axios, React DnD
-- **Backend**: Node.js(ESM) + Express
-- **Database**: MongoDB + Mongoose
-- **AI**: OpenAI GPT API
-- **PDF**: Puppeteer (이력서 PDF 변환)
+### Frontend
+
+- React 18
+- Vite 5
+- React Router DOM 6
+- Tailwind CSS 3
+- Axios
+- React DnD
+
+### Backend
+
+- Node.js + Express
+- MongoDB + Mongoose
+- OpenAI API
+- Puppeteer
+- Axios
 
 ## 프로젝트 구조
 
-```
+```text
 claud-project/
-├── client/                   # 프론트엔드 (React + Vite)
-│   └── src/
-│       ├── pages/
-│       │   ├── ProfilePage.jsx           # 프로필 입력 & 관리
-│       │   ├── LoadingJobsPage.jsx       # AI 생성 로딩 페이지 (실시간 채용공고)
-│       │   ├── ResumeEditorPage.jsx      # 드래그 앤 드롭 에디터 (3단 레이아웃)
-│       │   └── ResumeHistoryPage.jsx     # 이력서 히스토리 목록
-│       ├── components/
-│       │   ├── Layout.jsx                # 공통 레이아웃
-│       │   ├── ConsultingPanel.jsx       # 컨설팅 패널 (사이드바)
-│       │   ├── EditorToolbar.jsx         # 에디터 툴바
-│       │   └── DraggableElement.jsx      # 드래그 가능한 요소
-│       └── templates/                    # 이력서 템플릿 정의
-├── server/                   # 백엔드 (Express)
-│   ├── config/               # db.js (MongoDB 연결)
-│   ├── routes/               # profile, generate, resume, pdf, template, jobs
-│   ├── models/               # Profile.js, Resume.js
-│   ├── templates/            # 템플릿 시스템
-│   └── server.js
-├── .env.example
-├── AGENTS.md                 # 프로젝트 현황 문서
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ConsultingPanel.jsx
+│   │   │   ├── DraggableElement.jsx
+│   │   │   ├── EditorToolbar.jsx
+│   │   │   └── Layout.jsx
+│   │   ├── pages/
+│   │   │   ├── LoadingJobsPage.jsx
+│   │   │   ├── ProfilePage.jsx
+│   │   │   ├── ResumeEditorPage.jsx
+│   │   │   └── ResumeHistoryPage.jsx
+│   │   ├── App.jsx
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── index.html
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
+│   └── vite.config.js
+├── server/
+│   ├── config/
+│   │   └── db.js
+│   ├── models/
+│   │   ├── Profile.js
+│   │   └── Resume.js
+│   ├── routes/
+│   │   ├── generate.js
+│   │   ├── jobs.js
+│   │   ├── pdf.js
+│   │   ├── profile.js
+│   │   ├── resume.js
+│   │   └── template.js
+│   ├── templates/
+│   │   ├── classic.js
+│   │   ├── corporate.js
+│   │   ├── creative.js
+│   │   ├── minimal.js
+│   │   ├── modern.js
+│   │   └── index.js
+│   ├── utils/
+│   │   └── layoutToHTML.js
+│   ├── server.js
+│   └── package.json
+├── AGENTS.md
+├── 결과보고서.md
+├── result1.png
+├── result2.png
 └── README.md
 ```
 
-## 설치 및 실행
+## 화면 흐름
 
-### 1) 환경 변수
-루트에 `.env`를 생성하고 아래 값을 채웁니다.
-```
-OPENAI_API_KEY=your_actual_api_key
+1. `/`
+   - 프로필 입력, 저장, 기존 프로필 불러오기
+2. `/loading`
+   - 채용 공고 캐러셀 표시
+   - 템플릿 추천 API 호출
+   - 디자인 이력서 + 컨설팅 리포트 생성
+3. `/editor/:resumeId`
+   - 생성된 이력서 편집
+   - 컨설팅 리포트 확인
+   - PDF 다운로드
+4. `/history`
+   - 생성 이력서 목록 조회
+   - 특정 이력서를 다시 에디터에서 열기
+
+## 실행 방법
+
+### 1. 사전 준비
+
+- Node.js 18 이상 권장
+- MongoDB 실행 필요
+- OpenAI API 키 필요
+- 공공기관 채용 공고를 사용하려면 공공데이터포털 API 키 필요
+
+### 2. 환경 변수 설정
+
+현재 코드 구조상 `server/.env`에 아래 값을 두는 방식이 가장 자연스럽습니다.
+
+```env
+OPENAI_API_KEY=YOUR_OPENAI_API_KEY
 MONGODB_URI=mongodb://localhost:27017/resume-generator
 PORT=5001
-PUBLIC_JOBS_SERVICE_KEY=your_public_jobs_api_key
+PUBLIC_JOBS_SERVICE_KEY=YOUR_PUBLIC_JOBS_API_KEY
 ```
 
-### 2) 서버
+### 3. 서버 실행
+
 ```bash
 cd server
 npm install
 npm run dev
 ```
-기본 포트: http://localhost:5001
-MongoDB 연결, 프로필 저장/조회 API, AI 컨설팅 리포트 생성 API, 이력서 히스토리 API 구현 완료
 
-### 3) 클라이언트
+서버 기본 주소는 `http://localhost:5001` 입니다.
+
+### 4. 클라이언트 실행
+
 ```bash
 cd client
 npm install
 npm run dev
 ```
-기본 포트: http://localhost:3000 (Vite, /api 프록시 → http://localhost:5001)
 
-## 현재 상태
+클라이언트 기본 주소는 `http://localhost:3000` 입니다.
 
-### ✅ 완료 (v0.9.0 - PDF 해결 및 채용 API 통합)
-- **프로젝트 기본 구조 설정**
-- **프로필 입력 폼 UI 구현** (8개 섹션: 인적사항, 구직방향, 학력, 경력, 프로젝트, 스킬, 자격증/수상, 자기소개)
-- **프로필 CRUD API** (저장/조회/목록/삭제)
-- **MongoDB 연결 및 Profile, Resume 모델 구현**
-- **OpenAI GPT-4o-mini API 연동**
-- **AI 기반 컨설팅 리포트 생성** (6개 섹션 구조화)
-- **AI 템플릿 추천 시스템** (프로필 기반 최적 템플릿 선택)
-- **드래그 앤 드롭 이력서 에디터** (요소 이동, 크기 조절, 내용 편집)
-- **3단 레이아웃 에디터** (툴바 + 캔버스 + 컨설팅 패널)
-- **로딩 페이지** (실시간 채용공고 캐러셀, 진행률 표시)
-- **통합 생성 플로우** (한 번의 클릭으로 디자인 이력서 + 컨설팅 리포트 생성)
-- **이력서 히스토리 페이지** (생성된 리포트 목록 조회)
-- **PDF 다운로드 기능** (Puppeteer 기반, corruption 해결)
-- **공공기관 채용 API 통합** (실시간 데이터, 랜덤 노출)
-- **API 최적화** (이력서 생성 API 호출 4번 → 2번으로 감소)
-- **데이터베이스 최적화** (Resume 문서 생성 2개 → 1개로 통합)
-- **라우팅 개선** (히스토리 → 에디터 직접 이동)
-- **코드베이스 정리** (불필요한 페이지 삭제, 모델 필드 정리)
+Vite 프록시는 `/api` 요청을 `http://localhost:5001`로 전달합니다. 다만 PDF 다운로드는 바이너리 처리 이슈를 피하기 위해 클라이언트에서 서버 주소로 직접 요청하도록 구현되어 있습니다.
 
-### 진행 예정
-- 템플릿 추가 (현재 3개 → 10개 이상)
-- 사용자 인증 (선택)
-- 클라우드 배포 (Vercel + MongoDB Atlas)
+## 주요 API
 
-## 주요 기능
+### Profile
 
-### ✅ 프로필 관리
-- [x] 8개 섹션 프로필 입력 폼 (인적사항, 구직방향, 학력, 경력, 프로젝트, 스킬, 자격증/수상, 자기소개)
-- [x] 프로필 CRUD 기능 (저장, 조회, 목록, 삭제)
-- [x] 저장된 프로필 불러오기 (드롭다운 선택)
+- `GET /api/profile`
+- `POST /api/profile`
+- `GET /api/profile/:id`
+- `PUT /api/profile/:id`
+- `DELETE /api/profile/:id`
 
-### ✅ AI 이력서 생성
-- [x] **한 번의 클릭으로 디자인 이력서 + 컨설팅 리포트 동시 생성**
-- [x] **AI 템플릿 추천** (프로필 분석 기반 최적 템플릿 자동 선택)
-- [x] **로딩 페이지** (채용공고 캐러셀, 3단계 진행률 표시)
-- [x] **컨설팅 리포트** (6개 섹션: 개요, 강점/약점, 전략, 숨길 요소, 표현 예시, 1분 스피치)
+### Generate
 
-### ✅ 드래그 앤 드롭 에디터
-- [x] **3단 레이아웃** (왼쪽 툴바 + 중앙 캔버스 + 오른쪽 컨설팅 패널)
-- [x] **요소 드래그 앤 드롭** (자유로운 위치 이동)
-- [x] **요소 크기 조절** (리사이징)
-- [x] **실시간 내용 편집** (더블클릭 편집)
-- [x] **스타일 편집** (폰트, 색상, 크기, 정렬)
-- [x] **컨설팅 패널** (접기/펼치기, 복사 기능)
-- [x] **줌 기능** (50% ~ 150%)
-- [x] **자동 저장**
+- `POST /api/generate/recommend-template`
+- `POST /api/generate/generate-with-template`
+- `POST /api/generate/basic`
 
-### ✅ 이력서 관리
-- [x] 이력서 히스토리 페이지 (목록 조회 및 통계)
-- [x] **PDF 다운로드** (Puppeteer 기반, corruption 해결)
+### Resume
 
-### ✅ 채용 공고 연동
-- [x] **공공기관 채용 API 통합** (공공데이터포털)
-- [x] **랜덤 채용 공고 표시** (Fisher-Yates 알고리즘)
-- [x] **로딩 페이지 실시간 데이터** (50개 중 랜덤 10개)
+- `GET /api/resume`
+- `GET /api/resume/:id`
+- `POST /api/resume`
+- `PUT /api/resume/:id`
 
-### 진행 예정
-- [ ] 템플릿 추가 (더 다양한 디자인)
-- [ ] 사용자 인증 시스템
-- [ ] 클라우드 배포
+### Template / Jobs / PDF
 
-## 사용 흐름
+- `GET /api/template`
+- `GET /api/template/metadata`
+- `GET /api/template/:id`
+- `GET /api/jobs`
+- `POST /api/pdf/generate`
+- `POST /api/pdf/preview`
 
-### 통합 이력서 생성 (디자인 + 컨설팅)
-1. **프로필 입력**
-   - 프로필 페이지에서 8개 섹션 정보 입력
-   - "프로필 저장하기" 클릭 → MongoDB에 저장
+## 현재 코드 기준 특징
 
-2. **AI 이력서 생성**
-   - "AI 이력서 생성하기" 버튼 클릭
-   - 로딩 페이지로 이동 (채용공고 캐러셀 표시)
+- AI 모델
+  - 서버 라우트에서 `gpt-4o-mini`를 사용해 템플릿 추천, 디자인 이력서 초안, 컨설팅 리포트를 생성
+- 템플릿
+  - 현재 템플릿은 `modern`, `classic`, `creative`, `minimal`, `corporate` 5종
+- 저장 구조
+  - `Resume` 문서에 `layout`, `templateId`, `consultingReport`를 함께 저장
+- 에디터
+  - 좌측 툴바, 중앙 캔버스, 우측 컨설팅 패널 구조
+- 채용 공고
+  - 공공기관 채용 API에서 데이터를 받아 셔플 후 10개를 노출
+- 링크 처리
+  - 이력서 생성 시 프로필 링크가 있으면 `linksSection` HTML을 함께 구성
 
-3. **자동 생성 프로세스** (30~60초)
-   - **1단계 (0-40%)**: AI가 프로필 분석하여 최적 템플릿 추천
-   - **2단계 (40-100%)**: 디자인 이력서 + 컨설팅 리포트 통합 생성
-   - 완료 후 자동으로 에디터 페이지로 이동
+## 알려진 한계
 
-4. **드래그 앤 드롭 에디터**
-   - **왼쪽 툴바**: 선택된 요소의 스타일 편집 (폰트, 색상, 정렬 등)
-   - **중앙 캔버스**: 이력서 요소 드래그 앤 드롭, 크기 조절, 더블클릭 편집
-   - **오른쪽 패널**: 컨설팅 리포트 실시간 확인
-     - 섹션 1: 개요 (완료형 서술)
-     - 섹션 2: 강점 & 약점 분석
-     - 섹션 3: 프레젠테이션 전략
-     - 섹션 4: 줄이거나 숨기는 요소
-     - 섹션 5: 문장/표현 예시
-     - 섹션 6: 1분 자기소개 스피치
+- 입력 유효성 검사가 기본 수준입니다.
+- 인증/인가가 없어 누구나 API에 접근할 수 있는 구조입니다.
+- 사용자 친화적인 에러 UI보다 `alert` 기반 처리 비중이 큽니다.
+- PDF 다운로드는 현재 `http://localhost:5001` 직접 호출에 의존합니다.
+- 저장소에 `.env.example` 파일은 아직 없습니다.
 
-5. **완성 및 다운로드**
-   - 편집 완료 후 "저장" 버튼 클릭
-   - "PDF 다운로드" 버튼으로 PDF 파일 생성
+## 문서
 
-### 이력서 히스토리 조회
-1. "이력서 히스토리" 페이지 이동
-2. 생성된 모든 이력서 목록 확인
-3. 통계 정보 확인 (총 이력서 수)
-4. 원하는 이력서 클릭 → 에디터 페이지로 이동하여 편집 및 컨설팅 리포트 확인
+- 상세 진행 기록은 `AGENTS.md`에 정리되어 있습니다.
+- 추가 결과 정리는 `결과보고서.md`에 포함되어 있습니다.

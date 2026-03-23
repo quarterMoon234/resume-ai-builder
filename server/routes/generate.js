@@ -91,9 +91,14 @@ function formatProfileForPrompt(profile) {
   text += `전화번호: ${profile.basicInfo?.phone || '정보 없음'}\n`;
   text += `거주지: ${profile.basicInfo?.location || '정보 없음'}\n`;
   if (profile.basicInfo?.links && profile.basicInfo.links.length > 0) {
-    text += `링크: ${profile.basicInfo.links.map(l => `${l.type}: ${l.url}`).join(', ')}\n`;
+    text += `\n=== 링크 목록 ===\n`;
+    profile.basicInfo.links.forEach((link, idx) => {
+      const label = link.label || '링크';
+      const url = link.url || 'URL 없음';
+      text += `${idx + 1}. ${label}: ${url}\n`;
+    });
   } else {
-    text += `링크: 정보 없음\n`;
+    text += `\n=== 링크 목록 ===\n정보 없음\n`;
   }
 
   // 구직 방향
@@ -521,7 +526,9 @@ router.post('/generate-with-template', async (req, res) => {
 "5년 경력의 풀스택 개발자로, React와 Node.js 기반 웹 애플리케이션 개발에 전문성을 보유하고 있습니다. 사용자 중심 UI/UX 설계와 백엔드 API 최적화를 통해 서비스 성능을 평균 40% 이상 개선한 경험이 있으며, 애자일 환경에서 팀과 협업하여 프로젝트를 성공적으로 완수한 이력이 있습니다."
 
 ## experienceSection
-각 경력 항목을 다음 HTML 구조로 작성:
+**경력과 프로젝트를 통합하여 풍성하게 작성하세요.** 시간순 또는 중요도순으로 배열하여 지원자의 실무 경험을 입체적으로 보여줍니다.
+
+각 경력 항목을 다음 HTML 구조로:
 
 \`\`\`html
 <div class="experience-item" style="margin-bottom: 20px;">
@@ -537,21 +544,28 @@ router.post('/generate-with-template', async (req, res) => {
 </div>
 \`\`\`
 
-**중요**: 각 bullet은 "~했습니다" 형태의 완료형으로, 성과와 기술 스택을 모두 포함
-
-## projectsSection (있는 경우)
-각 프로젝트를 다음 구조로:
+각 프로젝트 항목을 다음 HTML 구조로:
 
 \`\`\`html
-<div class="project-item" style="margin-bottom: 18px;">
+<div class="experience-item" style="margin-bottom: 20px; border-left: 3px solid #3b82f6; padding-left: 12px;">
   <div style="display: flex; justify-content: space-between; align-items: baseline;">
-    <h4 style="margin: 0; font-weight: bold; font-size: 15px;">프로젝트명</h4>
-    <span style="color: #666; font-size: 13px;">기간</span>
+    <h4 style="margin: 0; font-weight: bold; font-size: 16px;">프로젝트명 | 역할</h4>
+    <span style="color: #666; font-size: 14px;">기간</span>
   </div>
-  <p style="margin: 4px 0; color: #555; font-size: 14px;">역할: [역할]</p>
-  <p style="margin: 6px 0; line-height: 1.6;">프로젝트 설명 및 주요 성과 (기술 스택 포함, 정량적 결과 강조)</p>
+  <p style="margin: 6px 0 4px 0; color: #555; font-size: 14px;">소속: [회사/기관/개인 프로젝트]</p>
+  <ul style="margin-top: 8px; padding-left: 20px;">
+    <li style="margin-bottom: 6px;">프로젝트 목표 및 배경 (간단히)</li>
+    <li style="margin-bottom: 6px;">담당 역할 및 사용 기술 스택</li>
+    <li style="margin-bottom: 6px;">주요 성과 및 결과 (정량적 지표 포함)</li>
+  </ul>
 </div>
 \`\`\`
+
+**중요**:
+- 경력과 프로젝트를 시간순으로 섞어서 배치하거나, 경력 먼저 → 프로젝트 순으로 배치
+- 프로젝트는 왼쪽 파란 테두리로 시각적 구분
+- 각 bullet은 "~했습니다" 형태의 완료형으로, 성과와 기술 스택을 모두 포함
+- 프로필에 경력이 없고 프로젝트만 있는 경우, 프로젝트를 주요 경험으로 부각
 
 ## skillsSection
 기술을 카테고리별로 정리하되, 직무 관련성 높은 순서로:
@@ -584,6 +598,23 @@ router.post('/generate-with-template', async (req, res) => {
 </ul>
 \`\`\`
 
+## linksSection
+- 프로필의 개인 링크 정보(basicInfo.links)에 있는 URL만 사용하세요.
+- 새로운 URL을 만들어내지 말고, 프로필에 제공된 URL만 그대로 사용합니다.
+- 링크가 하나 이상 있는 경우, 아래 예시처럼 HTML 목록으로 작성합니다.
+
+\`\`\`html
+<ul style="list-style: none; padding: 0; margin: 0;">
+  <li style="margin-bottom: 6px;">
+    <a href="https://github.com/username" style="color: #2563eb; text-decoration: none;">
+      GitHub: https://github.com/username
+    </a>
+  </li>
+</ul>
+\`\`\`
+
+- 링크가 전혀 없으면 이 필드는 빈 문자열("")로 반환하세요.
+
 # 절대 규칙
 
 1. **프로필에 없는 정보는 절대 생성하지 마세요** - 할루시네이션 금지
@@ -601,11 +632,11 @@ router.post('/generate-with-template', async (req, res) => {
   "name": "이름",
   "contact": "연락처 정보",
   "summary": "임팩트 있는 2-3문장 요약",
-  "experienceSection": "경력 HTML (성과 중심)",
+  "experienceSection": "경력 + 프로젝트 통합 HTML (성과 중심, 풍성하게)",
   "skillsSection": "스킬 HTML (카테고리별)",
   "educationSection": "학력 HTML",
   "certificationsSection": "자격증 HTML",
-  "projectsSection": "프로젝트 HTML (있는 경우만, 없으면 빈 문자열)",
+  "linksSection": "개인 링크 URL 목록 HTML (없으면 빈 문자열)",
   "profilePhoto": "사진 URL (있는 경우만, 없으면 빈 문자열)"
 }
 \`\`\``
@@ -631,6 +662,25 @@ router.post('/generate-with-template', async (req, res) => {
         message: 'AI 응답 파싱에 실패했습니다.',
         rawResponse: responseText
       });
+    }
+
+    // linksSection이 비어 있고 프로필에 링크가 있는 경우, 서버에서 기본 HTML 생성
+    if (!content.linksSection) {
+      if (profile.basicInfo?.links && profile.basicInfo.links.length > 0) {
+        const linksHtml = [
+          '<ul style="list-style: none; padding: 0; margin: 0;">',
+          ...profile.basicInfo.links.map(link => {
+            const label = link.label || '링크';
+            const url = link.url || '#';
+            return `  <li style="margin-bottom: 6px;"><a href="${url}" style="color: #2563eb; text-decoration: none;">${label}: ${url}</a></li>`;
+          }),
+          '</ul>'
+        ].join('\n');
+
+        content.linksSection = linksHtml;
+      } else {
+        content.linksSection = '';
+      }
     }
 
     // 템플릿과 컨텐츠를 결합한 초기 레이아웃 생성

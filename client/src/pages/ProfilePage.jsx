@@ -354,13 +354,22 @@ function ProfilePage() {
     setIsSaving(true);
 
     try {
-      // axios를 사용한 POST 요청
-      const response = await axios.post('/api/profile', profile);
+      let response;
 
-      // 성공 시 profileId 저장
-      setSavedProfileId(response.data.profileId);
-      alert('프로필이 성공적으로 저장되었습니다!');
-      console.log('저장된 프로필 ID:', response.data.profileId);
+      if (savedProfileId) {
+        // 기존 프로필 업데이트 (PUT)
+        console.log('기존 프로필 업데이트:', savedProfileId);
+        response = await axios.put(`/api/profile/${savedProfileId}`, profile);
+        alert('프로필이 성공적으로 수정되었습니다!');
+      } else {
+        // 새 프로필 생성 (POST)
+        console.log('새 프로필 생성');
+        response = await axios.post('/api/profile', profile);
+        setSavedProfileId(response.data.profileId);
+        alert('프로필이 성공적으로 저장되었습니다!');
+      }
+
+      console.log('프로필 ID:', response.data.profileId);
       console.log('전체 응답:', response.data);
 
     } catch (error) {
