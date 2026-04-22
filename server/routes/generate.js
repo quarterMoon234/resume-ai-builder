@@ -90,6 +90,7 @@ function formatProfileForPrompt(profile) {
   text += `이메일: ${profile.basicInfo?.email || '정보 없음'}\n`;
   text += `전화번호: ${profile.basicInfo?.phone || '정보 없음'}\n`;
   text += `거주지: ${profile.basicInfo?.location || '정보 없음'}\n`;
+  text += `프로필 사진: ${profile.basicInfo?.photo?.dataUrl ? '첨부됨' : '정보 없음'}\n`;
   if (profile.basicInfo?.links && profile.basicInfo.links.length > 0) {
     text += `\n=== 링크 목록 ===\n`;
     profile.basicInfo.links.forEach((link, idx) => {
@@ -664,6 +665,9 @@ router.post('/generate-with-template', async (req, res) => {
       });
     }
 
+    const profilePhotoDataUrl = profile.basicInfo?.photo?.dataUrl || '';
+    content.profilePhoto = profilePhotoDataUrl;
+
     // linksSection이 비어 있고 프로필에 링크가 있는 경우, 서버에서 기본 HTML 생성
     if (!content.linksSection) {
       if (profile.basicInfo?.links && profile.basicInfo.links.length > 0) {
@@ -683,13 +687,25 @@ router.post('/generate-with-template', async (req, res) => {
       }
     }
 
-    // 템플릿과 컨텐츠를 결합한 초기 레이아웃 생성
-    const initialLayout = {
-      template: template,
-      elements: template.layout.elements.map(el => ({
+    let elements = template.layout.elements
+      .map(el => ({
         ...el,
         content: content[el.id] || ''
       }))
+      .filter(el => el.type !== 'image' || el.content);
+
+    if (profilePhotoDataUrl && !elements.some(el => el.id === 'profilePhoto')) {
+      elements = adjustElementsForFallbackPhoto(template.id, elements);
+      elements = [
+        createFallbackProfilePhotoElement(profilePhotoDataUrl, template.id),
+        ...elements
+      ];
+    }
+
+    // 템플릿과 컨텐츠를 결합한 초기 레이아웃 생성
+    const initialLayout = {
+      template: template,
+      elements
     };
 
     // 컨설팅 리포트도 함께 생성
@@ -727,5 +743,76 @@ router.post('/generate-with-template', async (req, res) => {
     });
   }
 });
+
+function createFallbackProfilePhotoElement(content, templateId) {
+  const placementByTemplate = {
+    classic: {
+      position: { x: 50, y: 50 },
+      size: { width: 100, height: 100 },
+      borderRadius: '8px'
+    },
+    minimal: {
+      position: { x: 644, y: 60 },
+      size: { width: 90, height: 90 },
+      borderRadius: '8px'
+    }
+  };
+  const placement = placementByTemplate[templateId] || {
+    position: { x: 624, y: 50 },
+    size: { width: 110, height: 110 },
+    borderRadius: '8px'
+  };
+
+  return {
+    id: 'profilePhoto',
+    type: 'image',
+    position: placement.position,
+    size: placement.size,
+    style: {
+      borderRadius: placement.borderRadius,
+      border: '2px solid #cbd5e1',
+      objectFit: 'cover'
+    },
+    content
+  };
+}
+
+function adjustElementsForFallbackPhoto(templateId, elements) {
+  if (templateId === 'classic') {
+    return elements.map(element => {
+      if (element.id === 'name') {
+        return {
+          ...element,
+          position: { ...element.position, x: 175, y: 55 },
+          size: { ...element.size, width: 569, height: 45 },
+          style: { ...element.style, textAlign: 'left' }
+        };
+      }
+      if (element.id === 'contact') {
+        return {
+          ...element,
+          position: { ...element.position, x: 175, y: 120 },
+          size: { ...element.size, width: 569 },
+          style: { ...element.style, textAlign: 'left' }
+        };
+      }
+      return element;
+    });
+  }
+
+  if (templateId === 'minimal') {
+    return elements.map(element => {
+      if (element.id === 'name' || element.id === 'contact') {
+        return {
+          ...element,
+          size: { ...element.size, width: 560 }
+        };
+      }
+      return element;
+    });
+  }
+
+  return elements;
+}
 
 export default router;

@@ -81,8 +81,10 @@ export function layoutToHTML(template, elements) {
 
     // 요소 타입별 컨텐츠 렌더링
     if (element.type === 'image') {
-      const imgSrc = element.content || '/placeholder.png';
-      html += `<img src="${imgSrc}" alt="" />`;
+      if (element.content) {
+        const objectFit = element.style?.objectFit || 'cover';
+        html += `<img src="${element.content}" alt="" style="object-fit: ${objectFit};" />`;
+      }
     } else if (element.type === 'text' || element.type === 'richtext') {
       html += element.content || '';
     } else if (element.type === 'section') {

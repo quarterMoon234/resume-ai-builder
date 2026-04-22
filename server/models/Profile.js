@@ -6,6 +6,14 @@ const linkSchema = new mongoose.Schema({
   url: { type: String }
 }, { _id: false });
 
+// 프로필 사진 스키마
+const photoSchema = new mongoose.Schema({
+  dataUrl: { type: String },
+  fileName: { type: String },
+  mimeType: { type: String },
+  size: { type: Number }
+}, { _id: false });
+
 // 학력 스키마
 const educationSchema = new mongoose.Schema({
   school: { type: String },
@@ -57,6 +65,7 @@ const profileSchema = new mongoose.Schema({
     email: { type: String, required: true },
     phone: { type: String },
     location: { type: String },
+    photo: { type: photoSchema, default: null },
     links: [linkSchema]
   },
 

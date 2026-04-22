@@ -85,6 +85,50 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// PUT /api/profile/:id - 프로필 수정
+router.put('/:id', async (req, res) => {
+  try {
+    const profileData = req.body;
+
+    if (!profileData.basicInfo?.name || !profileData.basicInfo?.email) {
+      return res.status(400).json({
+        success: false,
+        message: '이름과 이메일은 필수 입력 항목입니다.'
+      });
+    }
+
+    const updatedProfile = await Profile.findByIdAndUpdate(
+      req.params.id,
+      profileData,
+      {
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!updatedProfile) {
+      return res.status(404).json({
+        success: false,
+        message: '프로필을 찾을 수 없습니다.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '프로필이 성공적으로 수정되었습니다.',
+      profileId: updatedProfile._id,
+      profile: updatedProfile
+    });
+  } catch (error) {
+    console.error('프로필 수정 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '프로필 수정 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
 // DELETE /api/profile/:id - 프로필 삭제
 router.delete('/:id', async (req, res) => {
   try {

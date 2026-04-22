@@ -75,6 +75,13 @@ function ResumeEditorPage() {
           : el
       )
     }));
+
+    if (selectedElement?.id === elementId) {
+      setSelectedElement(prev => ({
+        ...prev,
+        content: newContent
+      }));
+    }
   };
 
   const handleStyleChange = (elementId, styleKey, value) => {
@@ -176,6 +183,7 @@ function ResumeEditorPage() {
         <EditorToolbar
           selectedElement={selectedElement}
           onStyleChange={handleStyleChange}
+          onContentChange={handleContentChange}
           onSave={handleSave}
           onDownloadPDF={handleDownloadPDF}
           zoom={zoom}

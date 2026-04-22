@@ -1,4 +1,32 @@
-function EditorToolbar({ selectedElement, onStyleChange, onSave, onDownloadPDF, zoom, setZoom }) {
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+
+function EditorToolbar({ selectedElement, onStyleChange, onContentChange, onSave, onDownloadPDF, zoom, setZoom }) {
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+
+    if (!file || !selectedElement) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 첨부할 수 있습니다.');
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      alert('이미지는 2MB 이하 파일만 첨부할 수 있습니다.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      onContentChange(selectedElement.id, reader.result);
+    };
+    reader.onerror = () => {
+      alert('이미지를 읽는 중 오류가 발생했습니다.');
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="w-64 bg-white shadow-lg p-4 flex flex-col">
       <h2 className="text-xl font-bold mb-6">이력서 에디터</h2>
@@ -106,6 +134,39 @@ function EditorToolbar({ selectedElement, onStyleChange, onSave, onDownloadPDF, 
             </div>
             <p className="text-xs text-gray-500 mt-1">리사이즈 핸들로 조정하세요</p>
           </div>
+
+          {selectedElement.type === 'image' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">이미지</label>
+              <div className="w-full h-32 bg-gray-100 border border-gray-300 rounded overflow-hidden mb-2 flex items-center justify-center">
+                {selectedElement.content ? (
+                  <img
+                    src={selectedElement.content}
+                    alt="선택된 이미지 미리보기"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xs text-gray-500">이미지 없음</span>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="block w-full text-xs text-gray-700 file:mb-2 file:w-full file:px-3 file:py-2 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {selectedElement.content && (
+                <button
+                  type="button"
+                  onClick={() => onContentChange(selectedElement.id, '')}
+                  className="mt-2 w-full px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
+                >
+                  이미지 삭제
+                </button>
+              )}
+              <p className="text-xs text-gray-500 mt-2">JPG, PNG, WebP 등 2MB 이하 파일</p>
+            </div>
+          )}
 
           {/* 폰트 크기 */}
           {selectedElement.style?.fontSize && (

@@ -60,17 +60,35 @@ function DraggableElement({ element, isSelected, onMove, onResize, onContentChan
       }}
       onDoubleClick={handleDoubleClick}
     >
-      {element.type === 'image' && (
+      {element.type === 'image' && element.content && (
         <img
-          src={element.content || '/placeholder.png'}
+          src={element.content}
           alt=""
           style={{
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
+            objectFit: element.style?.objectFit || 'cover',
             pointerEvents: 'none'
           }}
         />
+      )}
+
+      {element.type === 'image' && !element.content && (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#f1f5f9',
+            color: '#64748b',
+            fontSize: 12,
+            pointerEvents: 'none'
+          }}
+        >
+          이미지 없음
+        </div>
       )}
 
       {element.type === 'text' && (

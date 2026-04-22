@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const MAX_PHOTO_SIZE = 2 * 1024 * 1024;
+
 function ProfilePage() {
   const navigate = useNavigate();
 
@@ -12,6 +14,7 @@ function ProfilePage() {
       email: '',
       phone: '',
       location: '',
+      photo: null,
       links: []
     },
     jobPreference: {
@@ -108,6 +111,41 @@ function ProfilePage() {
       ...prev,
       basicInfo: { ...prev.basicInfo, [field]: value }
     }));
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 첨부할 수 있습니다.');
+      return;
+    }
+
+    if (file.size > MAX_PHOTO_SIZE) {
+      alert('이미지는 2MB 이하 파일만 첨부할 수 있습니다.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateBasicInfo('photo', {
+        dataUrl: reader.result,
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size
+      });
+    };
+    reader.onerror = () => {
+      alert('이미지를 읽는 중 오류가 발생했습니다.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    updateBasicInfo('photo', null);
   };
 
   // 링크 추가
@@ -488,6 +526,44 @@ function ProfilePage() {
           <h3 className="text-lg font-bold mb-4">인적사항</h3>
 
           <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">프로필 사진</label>
+              <div className="flex items-center gap-4">
+                <div className="w-28 h-28 rounded-lg border border-gray-300 bg-gray-50 overflow-hidden flex items-center justify-center">
+                  {profile.basicInfo.photo?.dataUrl ? (
+                    <img
+                      src={profile.basicInfo.photo.dataUrl}
+                      alt="프로필 사진 미리보기"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-gray-500 text-center px-2">이미지 없음</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="block w-full text-sm text-gray-700 file:mr-4 file:px-4 file:py-2 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">JPG, PNG, WebP 등 이미지 파일을 2MB 이하로 첨부하세요.</p>
+                  {profile.basicInfo.photo?.fileName && (
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="text-xs text-gray-600 truncate">{profile.basicInfo.photo.fileName}</span>
+                      <button
+                        type="button"
+                        onClick={removePhoto}
+                        className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      >
+                        이미지 삭제
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium mb-1">이름 *</label>
               <input
@@ -1086,7 +1162,12 @@ function ProfilePage() {
             아래 JSON 데이터가 백엔드로 전송될 예정입니다.
           </p>
           <pre className="bg-white p-4 rounded border border-gray-300 overflow-x-auto text-xs">
-            {JSON.stringify(profile, null, 2)}
+            {JSON.stringify(profile, (key, value) => {
+              if (key === 'dataUrl' && typeof value === 'string' && value.startsWith('data:image/')) {
+                return `[첨부된 이미지 데이터 ${value.length}자]`;
+              }
+              return value;
+            }, 2)}
           </pre>
         </div>
       )}
