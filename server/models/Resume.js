@@ -21,6 +21,11 @@ const resumeSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+    generationId: {
+      type: String,
+      default: null,
+      index: true
+    },
     layout: {
       type: Object,
       default: null

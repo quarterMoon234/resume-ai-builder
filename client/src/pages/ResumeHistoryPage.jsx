@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const DUPLICATE_WINDOW_MS = 10000;
+
 function ResumeHistoryPage() {
   const navigate = useNavigate();
   const [resumes, setResumes] = useState([]);
@@ -43,6 +45,23 @@ function ResumeHistoryPage() {
     });
   };
 
+  const visibleResumes = resumes.reduce((uniqueResumes, resume) => {
+    const createdAt = new Date(resume.createdAt).getTime();
+    const profileId = resume.profileId?._id || 'unknown-profile';
+    const isDuplicate = uniqueResumes.some((existingResume) => {
+      const existingCreatedAt = new Date(existingResume.createdAt).getTime();
+      const existingProfileId = existingResume.profileId?._id || 'unknown-profile';
+
+      return (
+        existingProfileId === profileId &&
+        existingResume.type === resume.type &&
+        Math.abs(existingCreatedAt - createdAt) <= DUPLICATE_WINDOW_MS
+      );
+    });
+
+    return isDuplicate ? uniqueResumes : [...uniqueResumes, resume];
+  }, []);
+
   // 로딩 상태
   if (loading) {
     return (
@@ -78,7 +97,7 @@ function ResumeHistoryPage() {
       </div>
 
       {/* 이력서 목록이 없는 경우 */}
-      {resumes.length === 0 ? (
+      {visibleResumes.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <div className="text-6xl mb-4">📝</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">
@@ -100,16 +119,16 @@ function ResumeHistoryPage() {
           <div className="bg-white rounded-lg shadow p-6 mb-8 text-center">
             <p className="text-sm text-gray-600 mb-2">생성된 이력서</p>
             <p className="text-5xl font-bold text-indigo-600">
-              {resumes.length}
+              {visibleResumes.length}
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              총 {resumes.length}개의 AI 생성 이력서
+              총 {visibleResumes.length}개의 AI 생성 이력서
             </p>
           </div>
 
           {/* 이력서 목록 */}
           <div className="space-y-4">
-            {resumes.map((resume) => (
+            {visibleResumes.map((resume) => (
               <div
                 key={resume._id}
                 onClick={() => handleResumeClick(resume._id)}

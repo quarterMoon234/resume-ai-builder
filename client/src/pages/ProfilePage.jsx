@@ -437,7 +437,10 @@ function ProfilePage() {
     }
 
     // 로딩 페이지로 이동
-    navigate('/loading', { state: { profileId: savedProfileId } });
+    const generationId =
+      window.crypto?.randomUUID?.() ||
+      `${savedProfileId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    navigate('/loading', { state: { profileId: savedProfileId, generationId } });
   };
 
   // 폼 제출 (미리보기)

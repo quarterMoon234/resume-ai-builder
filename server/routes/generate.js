@@ -419,13 +419,27 @@ ${JSON.stringify(templates, null, 2)}
  */
 router.post('/generate-with-template', async (req, res) => {
   try {
-    const { profileId, templateId } = req.body;
+    const { profileId, templateId, generationId } = req.body;
 
     if (!profileId || !templateId) {
       return res.status(400).json({
         success: false,
         message: '프로필 ID와 템플릿 ID가 필요합니다.'
       });
+    }
+
+    if (generationId) {
+      const existingResume = await Resume.findOne({ generationId });
+      if (existingResume) {
+        return res.json({
+          success: true,
+          message: '이미 생성된 이력서를 반환합니다.',
+          resumeId: existingResume._id,
+          initialLayout: existingResume.layout,
+          content: existingResume.content ? JSON.parse(existingResume.content) : null,
+          consultingReport: existingResume.consultingReport
+        });
+      }
     }
 
     // 프로필 조회
@@ -719,6 +733,7 @@ router.post('/generate-with-template', async (req, res) => {
       profileId: profile._id,
       type: 'designed',
       templateId: template.id,
+      generationId: generationId || null,
       layout: initialLayout,
       content: JSON.stringify(content),
       consultingReport: consultingReport

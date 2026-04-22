@@ -5,7 +5,7 @@ import axios from 'axios';
 function LoadingJobsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { profileId } = location.state || {};
+  const { profileId, generationId } = location.state || {};
 
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -19,12 +19,23 @@ function LoadingJobsPage() {
       return;
     }
 
-    // 채용 공고 API 호출
-    loadJobPostings();
+    const activeGenerationId = generationId || `profile-${profileId}`;
+    let isCancelled = false;
+    const startTimer = window.setTimeout(() => {
+      if (isCancelled) return;
 
-    // AI 이력서 생성 프로세스
-    generateResume();
-  }, [profileId]);
+      // 채용 공고 API 호출
+      loadJobPostings();
+
+      // AI 이력서 생성 프로세스
+      generateResume(activeGenerationId);
+    }, 0);
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(startTimer);
+    };
+  }, [profileId, generationId]);
 
   useEffect(() => {
     // 채용 공고가 로드되면 슬라이드 시작
@@ -62,7 +73,7 @@ function LoadingJobsPage() {
     }
   };
 
-  const generateResume = async () => {
+  const generateResume = async (activeGenerationId) => {
     try {
       // 1단계: 템플릿 추천 (0-40%)
       setStatusMessage('🎨 AI가 최적의 템플릿을 추천하고 있습니다...');
@@ -80,7 +91,8 @@ function LoadingJobsPage() {
 
       const generateResponse = await axios.post('/api/generate/generate-with-template', {
         profileId,
-        templateId: template.id
+        templateId: template.id,
+        generationId: activeGenerationId
       });
       const { resumeId } = generateResponse.data;
       setProgress(100);
