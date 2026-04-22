@@ -9,6 +9,8 @@ const router = express.Router();
  * 편집된 레이아웃을 PDF로 변환
  */
 router.post('/generate', async (req, res) => {
+  let browser = null;
+
   try {
     const { layout } = req.body;
 
@@ -27,7 +29,7 @@ router.post('/generate', async (req, res) => {
     console.log('[PDF] HTML 생성 완료 - 길이:', html.length);
 
     // Puppeteer로 PDF 생성
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: true,
       args: [
         '--no-sandbox',
@@ -51,14 +53,27 @@ router.post('/generate', async (req, res) => {
 
     // HTML 컨텐츠 설정
     await page.setContent(html, {
-      waitUntil: 'networkidle2',
-      timeout: 30000
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
     });
     console.log('[PDF] HTML 컨텐츠 로드 완료');
 
-    // 폰트 로딩 대기 (Google Fonts 로딩 보장)
-    await page.evaluateHandle('document.fonts.ready');
-    console.log('[PDF] 폰트 로딩 완료');
+    // 폰트와 이미지 로딩을 제한 시간 안에서만 기다립니다.
+    await page.evaluate(async () => {
+      const fontReady = document.fonts?.ready || Promise.resolve();
+      const imageReady = Promise.all(
+        Array.from(document.images).map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
+      const timeout = new Promise(resolve => setTimeout(resolve, 5000));
+      await Promise.race([Promise.all([fontReady, imageReady]), timeout]);
+    });
+    console.log('[PDF] 폰트/이미지 로딩 대기 완료');
 
     // 추가 안정화 시간 (렌더링 완료 보장)
     await new Promise(resolve => setTimeout(resolve, 1000)); // 500ms → 1000ms
@@ -80,6 +95,7 @@ router.post('/generate', async (req, res) => {
     console.log('[PDF] PDF 생성 완료 - 크기:', pdf.length, 'bytes');
 
     await browser.close();
+    browser = null;
     console.log('[PDF] 브라우저 종료 완료');
 
     // puppeteer가 Uint8Array를 반환하는 경우를 대비해 Buffer로 변환
@@ -93,6 +109,11 @@ router.post('/generate', async (req, res) => {
 
   } catch (error) {
     console.error('PDF 생성 오류:', error);
+    if (browser) {
+      await browser.close().catch(closeError => {
+        console.error('[PDF] 브라우저 종료 오류:', closeError);
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'PDF 생성 중 오류가 발생했습니다.',
